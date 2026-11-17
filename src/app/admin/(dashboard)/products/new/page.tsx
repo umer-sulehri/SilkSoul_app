@@ -25,9 +25,13 @@ export default async function NewProductPage() {
       <AdminPageHeader
         eyebrow="Catalog"
         title="New product"
-        description="Add the essentials now. You can upload images after saving."
+        description="Add the product details and primary image in one step."
       />
-      <ProductForm categories={categories} productOptions={productOptions} />
+      <ProductForm
+        categories={categories}
+        productOptions={productOptions}
+        withImageUpload
+      />
     </div>
   );
 }

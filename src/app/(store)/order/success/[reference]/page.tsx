@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ClearCartOnMount } from "@/components/cart/clear-cart-on-mount";
 import { getOrderByToken } from "@/lib/data/orders";
+import { paymentMethodLabel } from "@/lib/payments";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { OrderStatus } from "@/types/database";
 
@@ -184,11 +185,13 @@ export default async function OrderSuccessPage({
               Payment
             </p>
             <p className="mt-2 text-sm capitalize text-muted">
-              {order.paymentMethod.replaceAll("_", " ")} ·{" "}
+              {paymentMethodLabel(order.paymentMethod)} ·{" "}
               {order.paymentStatus === "paid" ? "Paid" : "Payment pending"}
             </p>
             <p className="mt-1 text-xs text-muted">
-              Cash on delivery is marked paid only after collection.
+              {order.paymentMethod === "cod"
+                ? "Cash on delivery is marked paid only after collection."
+                : "Advance payments are confirmed after we verify your uploaded receipt."}
             </p>
           </div>
         </div>

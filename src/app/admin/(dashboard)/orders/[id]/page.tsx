@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import {
+  ConfirmPaymentForm,
   OrderNoteForm,
   OrderStatusForm,
   PaymentStatusForm,
@@ -19,6 +21,7 @@ import {
 import { GenerateReceiptForm } from "@/components/admin/document-forms";
 import { StatusBadge } from "@/components/ui/badge";
 import { getAdminOrder } from "@/lib/data/admin";
+import { paymentMethodLabel } from "@/lib/payments";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Order detail" };
@@ -48,7 +51,7 @@ export default async function AdminOrderDetailPage({
       <AdminPageHeader
         eyebrow="Order"
         title={order.order_number}
-        description={`Placed ${formatDateTime(order.placed_at)} · ${order.payment_method.replaceAll("_", " ").toUpperCase()}`}
+        description={`Placed ${formatDateTime(order.placed_at)} · ${paymentMethodLabel(order.payment_method)}`}
         action={
           <div className="flex items-center gap-2">
             <StatusBadge status={order.status} />
@@ -229,8 +232,76 @@ export default async function AdminOrderDetailPage({
             <p className="mb-4 mt-1 text-xs text-muted">
               {order.payment_method === "cod"
                 ? "Cash on delivery. Mark paid once cash is collected."
-                : `Method: ${order.payment_method.replaceAll("_", " ")}`}
+                : `Method: ${paymentMethodLabel(order.payment_method)}. Verify the receipt before confirming.`}
             </p>
+
+            {order.payment_receipt_path ? (
+              <div className="mb-4 rounded-[12px] border border-border bg-surface-soft/50 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">Payment receipt</p>
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      {order.payment_receipt_uploaded_at
+                        ? `Uploaded ${formatDateTime(order.payment_receipt_uploaded_at)}`
+                        : "Receipt on file"}
+                    </p>
+                  </div>
+                  {order.paymentReceiptUrl ? (
+                    <a
+                      href={order.paymentReceiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      Open
+                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  ) : null}
+                </div>
+
+                {order.paymentReceiptUrl ? (
+                  <a
+                    href={order.paymentReceiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 block overflow-hidden rounded-[10px] border border-border bg-white"
+                  >
+                    <Image
+                      src={order.paymentReceiptUrl}
+                      alt={`Payment receipt for ${order.order_number}`}
+                      width={640}
+                      height={420}
+                      unoptimized
+                      className="h-auto max-h-72 w-full object-contain"
+                    />
+                  </a>
+                ) : (
+                  <p className="mt-2 text-xs text-muted">
+                    Receipt uploaded, but the signed preview is unavailable. Check storage
+                    configuration.
+                  </p>
+                )}
+
+                {order.payment_confirmed_at ? (
+                  <p className="mt-3 rounded-[8px] border border-success/25 bg-success/5 px-3 py-2 text-xs text-ink">
+                    Payment confirmed {formatDateTime(order.payment_confirmed_at)}.
+                  </p>
+                ) : order.paymentReceiptUrl ? (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <ConfirmPaymentForm orderId={order.id} />
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-[8px] border border-warning/25 bg-warning/5 px-3 py-2 text-xs text-muted">
+                    Confirmation is unavailable until the receipt preview can be loaded.
+                  </p>
+                )}
+              </div>
+            ) : order.payment_method !== "cod" ? (
+              <p className="mb-4 rounded-[8px] border border-warning/25 bg-warning/5 px-3 py-2 text-xs text-muted">
+                No payment receipt has been uploaded for this order.
+              </p>
+            ) : null}
+
             <PaymentStatusForm orderId={order.id} paymentStatus={order.payment_status} />
           </section>
 

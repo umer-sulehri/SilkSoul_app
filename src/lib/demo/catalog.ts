@@ -1,4 +1,6 @@
 import type { Product, StoreSettings } from "@/types/catalog";
+import { defaultPaymentSettings } from "@/lib/payments";
+import { defaultSiteTheme } from "@/lib/site-theme";
 
 const hairOil: Product = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -139,8 +141,10 @@ export const demoStoreSettings: StoreSettings = {
   deliveryFee: 250,
   freeDeliveryThreshold: 5000,
   codEnabled: true,
+  payments: defaultPaymentSettings,
   announcement:
     "Complimentary delivery on orders over Rs 5,000 · Cash on delivery available",
+  theme: defaultSiteTheme,
 };
 
 export const demoSettings = demoStoreSettings;

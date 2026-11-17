@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
+  confirmOrderPaymentAction,
   saveOrderNoteAction,
   updateOrderStatusAction,
   updatePaymentStatusAction,
@@ -10,19 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { orderStatusTransitions } from "@/lib/order-status";
+import { cn } from "@/lib/utils";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 
 const initialState: OrderActionState = { status: "idle" };
-
-const transitions: Record<OrderStatus, OrderStatus[]> = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["processing", "cancelled"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered", "cancelled"],
-  delivered: ["returned"],
-  cancelled: [],
-  returned: [],
-};
 
 function label(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -44,6 +37,72 @@ function Feedback({ state }: { state: OrderActionState }) {
   );
 }
 
+export function OrderStatusQuickForm({
+  orderId,
+  orderNumber,
+  status,
+}: {
+  orderId: string;
+  orderNumber: string;
+  status: OrderStatus;
+}) {
+  const [state, formAction, isPending] = useActionState(
+    updateOrderStatusAction,
+    initialState,
+  );
+  const [nextStatus, setNextStatus] = useState("");
+  const nextStatuses = orderStatusTransitions[status];
+
+  if (nextStatuses.length === 0) {
+    return <p className="text-[11px] text-muted">Final status</p>;
+  }
+
+  return (
+    <form action={formAction} className="space-y-1.5">
+      <input type="hidden" name="orderId" value={orderId} />
+      <div className="flex items-center gap-1.5">
+        <Select
+          name="status"
+          value={nextStatus}
+          onChange={(event) => setNextStatus(event.target.value)}
+          aria-label={`Change status for ${orderNumber}`}
+          className="h-8 min-w-[118px] px-2.5 text-xs"
+        >
+          <option value="" disabled>
+            Change…
+          </option>
+          {nextStatuses.map((next) => (
+            <option key={next} value={next}>
+              {label(next)}
+            </option>
+          ))}
+        </Select>
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          loading={isPending}
+          disabled={!nextStatus}
+          className="h-8 px-2.5 text-xs"
+        >
+          Save
+        </Button>
+      </div>
+      {state.message ? (
+        <p
+          className={cn(
+            "max-w-[180px] text-[11px] leading-snug",
+            state.status === "error" ? "text-danger" : "text-success",
+          )}
+          role="status"
+        >
+          {state.message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
 export function OrderStatusForm({
   orderId,
   status,
@@ -55,7 +114,7 @@ export function OrderStatusForm({
     updateOrderStatusAction,
     initialState,
   );
-  const nextStatuses = transitions[status];
+  const nextStatuses = orderStatusTransitions[status];
 
   return (
     <form action={formAction} className="space-y-3">
@@ -130,6 +189,26 @@ export function PaymentStatusForm({
       <Button type="submit" variant="outline" size="sm" loading={isPending}>
         Save payment
       </Button>
+    </form>
+  );
+}
+
+export function ConfirmPaymentForm({ orderId }: { orderId: string }) {
+  const [state, formAction, isPending] = useActionState(
+    confirmOrderPaymentAction,
+    initialState,
+  );
+
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="orderId" value={orderId} />
+      <Feedback state={state} />
+      <Button type="submit" size="sm" loading={isPending}>
+        Confirm receipt & mark paid
+      </Button>
+      <p className="text-[11px] leading-relaxed text-muted">
+        Only confirm after verifying the uploaded receipt against your account.
+      </p>
     </form>
   );
 }

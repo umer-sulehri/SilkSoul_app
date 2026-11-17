@@ -7,6 +7,8 @@ import {
   saveProductAction,
   type ProductActionState,
 } from "@/app/admin/actions/products";
+import { ColorField } from "@/components/admin/color-field";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { FieldError, HelperText, Label } from "@/components/ui/label";
@@ -71,47 +73,6 @@ function Section({
 }
 
 
-function ColorField({
-  id,
-  name,
-  label,
-  value,
-  onChange,
-  error,
-}: {
-  id: string;
-  name: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-}) {
-  return (
-    <div>
-      <Label htmlFor={id}>{label}</Label>
-      <div className="flex items-center gap-2">
-        <input
-          id={id}
-          type="color"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-11 w-12 cursor-pointer rounded-[10px] border border-border bg-surface p-1"
-          aria-label={`${label} colour picker`}
-        />
-        <Input
-          name={name}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          maxLength={7}
-          spellCheck={false}
-          aria-invalid={Boolean(error)}
-          className="font-mono uppercase"
-        />
-      </div>
-      <FieldError message={error} />
-    </div>
-  );
-}
 
 function ThemeFields({
   defaults,
@@ -171,10 +132,12 @@ export function ProductForm({
   product,
   categories,
   productOptions,
+  withImageUpload = false,
 }: {
   product?: AdminProduct | null;
   categories: { id: string; name: string }[];
   productOptions: AdminProductOption[];
+  withImageUpload?: boolean;
 }) {
   const [state, formAction, isPending] = useActionState(saveProductAction, initialState);
   const isEdit = Boolean(product);
@@ -430,6 +393,16 @@ export function ProductForm({
           />
         </div>
       </Section>
+
+      {withImageUpload && !product ? (
+        <Section
+          title="Product image"
+          description="Upload the primary image now. You can add more images after saving."
+        >
+          <ImageUploadField label="Primary product image" />
+          <FieldError message={state.fieldErrors?.image} />
+        </Section>
+      ) : null}
 
       <Section title="Search and visibility">
         <div className="grid gap-5 sm:grid-cols-2">

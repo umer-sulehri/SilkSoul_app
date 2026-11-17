@@ -25,7 +25,13 @@ const paymentStatuses: PaymentStatus[] = [
   "failed",
 ];
 
-const paymentMethods: PaymentMethod[] = ["cod", "bank_transfer", "card"];
+const paymentMethods: PaymentMethod[] = [
+  "cod",
+  "bank_transfer",
+  "card",
+  "advance",
+  "jazzcash",
+];
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)

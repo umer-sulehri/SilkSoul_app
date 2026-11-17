@@ -4,14 +4,19 @@ import { ChevronRight } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { Container } from "@/components/ui/layout";
 import { getStoreSettings } from "@/lib/data/products";
+import { getPaymentOptions } from "@/lib/payments";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  description: "Complete your SilkSoul order with cash on delivery.",
+  description: "Complete your SilkSoul order and choose how you would like to pay.",
 };
 
 export default async function CheckoutPage() {
   const settings = await getStoreSettings();
+  const paymentOptions = getPaymentOptions({
+    codEnabled: settings.codEnabled,
+    payments: settings.payments,
+  });
 
   return (
     <div className="pb-24 pt-8 sm:pt-10">
@@ -27,14 +32,15 @@ export default async function CheckoutPage() {
             <h1 className="mt-3 font-serif text-4xl text-ink sm:text-5xl">A few last details.</h1>
           </div>
           <p className="max-w-sm text-sm text-muted">
-            Cash on delivery. We will confirm your order and delivery timeline by phone.
+            Choose cash on delivery or an advance method if available. We will confirm your
+            order and delivery timeline by phone.
           </p>
         </div>
         <div className="mt-10">
           <CheckoutForm
             deliveryFee={settings.deliveryFee}
             freeThreshold={settings.freeDeliveryThreshold}
-            codEnabled={settings.codEnabled}
+            paymentOptions={paymentOptions}
           />
         </div>
       </Container>

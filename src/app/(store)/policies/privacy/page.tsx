@@ -19,7 +19,7 @@ export default async function PrivacyPolicyPage() {
           heading: "Information we collect",
           body: [
             "When you place an order we collect your name, phone number, optional email address, delivery address, city, optional postal code and any order note you choose to share. We also keep a record of the products you ordered and the amounts charged.",
-            "We do not collect or store payment card details. Cash on delivery is currently the available payment method, and any future card payments would be handled by a compliant payment provider.",
+            "We do not collect or store payment card details. Cash on delivery, advance bank/card transfer and JazzCash may be offered at checkout. For advance methods, you upload a payment receipt that is stored privately and reviewed by our staff to confirm payment. Card payments must be completed through the details we provide; our store does not capture your card number.",
           ],
         },
         {

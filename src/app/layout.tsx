@@ -3,6 +3,8 @@ import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import { CartProvider } from "@/components/cart/cart-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { siteConfig } from "@/lib/env";
+import { getStoreSettings } from "@/lib/data/products";
+import { siteThemeStyle } from "@/lib/site-theme";
 import "./globals.css";
 
 const bodyFont = DM_Sans({
@@ -53,14 +55,23 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#f7f5ec",
-  colorScheme: "light",
-};
+export async function generateViewport(): Promise<Viewport> {
+  const settings = await getStoreSettings();
+  return {
+    themeColor: settings.theme.background,
+    colorScheme: "light",
+  };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const settings = await getStoreSettings();
+
   return (
-    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`}>
+    <html
+      lang="en"
+      className={`${bodyFont.variable} ${displayFont.variable}`}
+      style={siteThemeStyle(settings.theme)}
+    >
       <body className="min-h-dvh bg-background text-ink">
         <CartProvider>{children}</CartProvider>
         <Toaster />

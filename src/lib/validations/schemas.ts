@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checkoutPaymentMethods } from "@/lib/payments";
 
 export const cartItemInputSchema = z.object({
   productId: z.string().uuid(),
@@ -27,7 +28,7 @@ export const checkoutSchema = z.object({
   city: z.string().trim().min(2, "Please enter your city.").max(80, "City is too long."),
   postalCode: z.string().trim().max(12, "Postal code is too long.").optional(),
   note: z.string().trim().max(500, "Order note is too long.").optional(),
-  paymentMethod: z.enum(["cod"]),
+  paymentMethod: z.enum(checkoutPaymentMethods),
   couponCode: z.string().trim().max(40).optional(),
   idempotencyKey: z.string().uuid("Your session expired. Please refresh and try again."),
   items: z.array(cartItemInputSchema).min(1, "Your cart is empty."),
@@ -157,7 +158,7 @@ export const checkoutFormSchema = z.object({
   city: z.string().trim().min(2, "Please enter your city.").max(80, "City is too long."),
   postalCode: z.string().trim().max(12, "Postal code is too long.").optional(),
   note: z.string().trim().max(500, "Order note is too long.").optional(),
-  paymentMethod: z.enum(["cod"]),
+  paymentMethod: z.enum(checkoutPaymentMethods),
 });
 
 export type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -170,9 +171,40 @@ export const storeSettingsSchema = z.object({
   deliveryFee: z.coerce.number().min(0, "Delivery fee cannot be negative."),
   freeDeliveryThreshold: z.coerce.number().min(0, "Threshold cannot be negative."),
   codEnabled: z.boolean(),
+  advancePaymentEnabled: z.boolean(),
+  advancePaymentDetails: z.string().trim().max(2000).optional(),
+  jazzcashEnabled: z.boolean(),
+  jazzcashDetails: z.string().trim().max(1000).optional(),
   announcement: z.string().trim().max(220).optional(),
   address: z.string().trim().max(300).optional(),
   instagram: z.string().trim().max(120).optional(),
+  themeBackground: hexColor,
+  themeSurface: hexColor,
+  themeSurfaceSoft: hexColor,
+  themeInk: hexColor,
+  themeMuted: hexColor,
+  themePrimary: hexColor,
+  themeAccent: hexColor,
+  themeBorder: hexColor,
+  themeSuccess: hexColor,
+  themeWarning: hexColor,
+  themeDanger: hexColor,
+}).superRefine((value, ctx) => {
+  if (value.advancePaymentEnabled && (value.advancePaymentDetails?.length ?? 0) < 10) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["advancePaymentDetails"],
+      message: "Add the card or bank details customers should use for advance payment.",
+    });
+  }
+
+  if (value.jazzcashEnabled && (value.jazzcashDetails?.length ?? 0) < 5) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["jazzcashDetails"],
+      message: "Add the JazzCash account details customers should use.",
+    });
+  }
 });
 
 export const couponFormSchema = z

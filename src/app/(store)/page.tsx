@@ -91,7 +91,7 @@ export default async function HomePage() {
           </div>
 
           {featured.length > 0 ? (
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:gap-8">
+            <div className="mx-auto mt-10 grid max-w-4xl gap-5 sm:grid-cols-2 lg:gap-6">
               {featured.map((product, index) => (
                 <ProductCard key={product.id} product={product} priority={index === 0} />
               ))}
@@ -136,38 +136,61 @@ export default async function HomePage() {
             <div className="order-1 lg:order-2">
               <SectionHeading
                 eyebrow="Our approach"
-                title="Haircare that feels like a deep breath."
-                description="SilkSoul began with a simple idea: the best hair rituals are the ones you look forward to. We keep our formulas focused, our textures light and our fragrances soft."
+                title="Two steps, written as one ritual."
+                description="SilkSoul is not a shelf of shortcuts. It is a two-part story: an oil that slows you down, and a wash that leaves hair soft. Each product has its own role. Together, they make the ritual."
               />
-              <div className="mt-8 space-y-6">
+
+              <p className="mt-6 border-l-2 border-accent/50 pl-4 font-serif text-lg italic leading-relaxed text-ink">
+                “One bottle softens. One bottle cleanses. Neither feels complete without
+                the other.”
+              </p>
+
+              <ol className="mt-8 space-y-0 border-l border-border">
                 {[
                   {
-                    title: "Nourish without the weight",
-                    copy: "Light oils sink in to condition the scalp and lengths without leaving a heavy film.",
+                    eyebrow: "Chapter one · Natural Hair Oil",
+                    title: "Begin at the scalp.",
+                    copy: "Warm a few drops of our botanical hair oil between your palms. Massage it into the scalp and lengths, then let rosemary, fenugreek, argan and castor oil do their quiet work. It is the slow, unhurried half of the ritual.",
+                    href: "/products/natural-hair-oil",
                   },
                   {
-                    title: "Clean without the strip",
-                    copy: "Our sulphate-free shampoo lifts dirt and buildup while keeping hair soft and comfortable.",
+                    eyebrow: "Chapter two · Milky Repair & Smooth Shampoo",
+                    title: "Then, wash it clean.",
+                    copy: "The next morning, our milky sulphate-free shampoo lifts away buildup without stripping the softness the oil left behind. Hair feels clean, comfortable and ready to begin again.",
+                    href: "/products/milky-repair-smooth-shampoo",
                   },
                   {
-                    title: "A ritual you can keep",
-                    copy: "No complicated ten-step routines. Just thoughtful products you will actually use.",
+                    eyebrow: "The ritual · Together",
+                    title: "The pair is the point.",
+                    copy: "The oil conditions. The shampoo refreshes. Used together, they turn an ordinary wash day into a small ritual you can actually keep.",
+                    href: "/products",
                   },
                 ].map((item) => (
-                  <div key={item.title} className="flex gap-4">
-                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
-                    <div>
-                      <h3 className="text-sm font-semibold text-ink">{item.title}</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-muted">{item.copy}</p>
-                    </div>
-                  </div>
+                  <li key={item.title} className="relative pb-7 pl-6 last:pb-0">
+                    <span
+                      className="absolute -left-[7px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-accent"
+                      aria-hidden="true"
+                    />
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      {item.eyebrow}
+                    </p>
+                    <h3 className="mt-1.5 font-serif text-xl text-ink">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted">{item.copy}</p>
+                    <Link
+                      href={item.href}
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover"
+                    >
+                      Explore this step
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                  </li>
                 ))}
-              </div>
+              </ol>
               <Link
                 href="/about"
                 className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-hover"
               >
-                Read our story
+                Read the full SilkSoul story
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </div>

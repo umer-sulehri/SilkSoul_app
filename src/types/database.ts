@@ -28,7 +28,7 @@ export type PaymentStatus =
   | "partially_refunded"
   | "refunded"
   | "failed";
-export type PaymentMethod = "cod" | "bank_transfer" | "card";
+export type PaymentMethod = "cod" | "bank_transfer" | "card" | "advance" | "jazzcash";
 export type ReviewStatus = "pending" | "approved" | "rejected" | "hidden";
 export type MovementType =
   | "restock"
@@ -149,6 +149,10 @@ export type OrderRow = {
   status: OrderStatus;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
+  payment_receipt_path: string | null;
+  payment_receipt_uploaded_at: string | null;
+  payment_confirmed_at: string | null;
+  payment_confirmed_by: string | null;
   subtotal: number;
   discount_total: number;
   delivery_fee: number;

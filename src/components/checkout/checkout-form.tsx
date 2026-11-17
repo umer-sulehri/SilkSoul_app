@@ -2,18 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useActionState, useEffect, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, CreditCard, Lock, Truck } from "lucide-react";
+import { ArrowLeft, Banknote, CreditCard, Lock, Smartphone, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { placeOrderAction, type CheckoutActionState } from "@/app/actions/checkout";
 import { useCart } from "@/components/cart/cart-provider";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { FieldError, HelperText, Label } from "@/components/ui/label";
 import { Alert, EmptyState } from "@/components/ui/layout";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/validations/schemas";
+import { validatePaymentReceipt, type PaymentOption } from "@/lib/payments";
 import { cartTotals } from "@/lib/pricing/cart";
 import { isSupabaseConfigured } from "@/lib/env";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -27,15 +29,15 @@ const initialState: CheckoutActionState = {
 export function CheckoutForm({
   deliveryFee,
   freeThreshold,
-  codEnabled,
+  paymentOptions,
 }: {
   deliveryFee: number;
   freeThreshold: number;
-  codEnabled: boolean;
+  paymentOptions: PaymentOption[];
 }) {
   const { items, isHydrated } = useCart();
-  const [idempotencyKey, setIdempotencyKey] = useState("");
-  const formRef = useRef<HTMLFormElement>(null);
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(placeOrderAction, initialState);
   const connected = isSupabaseConfigured();
 
@@ -43,6 +45,7 @@ export function CheckoutForm({
     register,
     handleSubmit,
     setError,
+    control,
     formState: { errors },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -55,15 +58,10 @@ export function CheckoutForm({
       city: "",
       postalCode: "",
       note: "",
-      paymentMethod: "cod",
+      paymentMethod: paymentOptions[0]?.code ?? "cod",
     },
   });
-
-  useEffect(() => {
-    // Generated on the client only so the checkout session has a stable key.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIdempotencyKey(crypto.randomUUID());
-  }, []);
+  const selectedPaymentMethod = useWatch({ control, name: "paymentMethod" });
 
   useEffect(() => {
     if (!state.fieldErrors) return;
@@ -99,10 +97,19 @@ export function CheckoutForm({
   }
 
   const totals = cartTotals(items, freeThreshold, deliveryFee);
+  const selectedPayment = paymentOptions.find(
+    (option) => option.code === selectedPaymentMethod,
+  );
 
-  const onSubmit = (values: CheckoutFormValues) => {
+  const onSubmit = (
+    values: CheckoutFormValues,
+    event?: { target: EventTarget | null },
+  ) => {
     if (pending) return;
-    const formData = new FormData();
+    const formData =
+      event?.target instanceof HTMLFormElement
+        ? new FormData(event.target)
+        : new FormData();
     Object.entries(values).forEach(([key, value]) => {
       formData.set(key, value ?? "");
     });
@@ -111,11 +118,27 @@ export function CheckoutForm({
       "items",
       JSON.stringify(items.map((item) => ({ productId: item.productId, quantity: item.quantity }))),
     );
+
+    if (selectedPayment?.requiresReceipt) {
+      const receipt = formData.get("paymentReceipt");
+      if (!(receipt instanceof File) || receipt.size === 0) {
+        setReceiptError("Upload a screenshot or photo of your payment receipt.");
+        return;
+      }
+
+      const receiptValidationError = validatePaymentReceipt(receipt);
+      if (receiptValidationError) {
+        setReceiptError(receiptValidationError);
+        return;
+      }
+    }
+
+    setReceiptError(null);
     formAction(formData);
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} noValidate className="grid items-start gap-8 lg:grid-cols-[1.4fr_0.8fr]">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid items-start gap-8 lg:grid-cols-[1.4fr_0.8fr]">
       <div className="space-y-6">
         {!connected ? (
           <Alert tone="warning" title="Preview mode">
@@ -239,33 +262,96 @@ export function CheckoutForm({
             <h2 className="font-serif text-2xl text-ink">Payment</h2>
           </div>
           <p className="mt-1.5 text-sm text-muted">
-            Pay in cash when your order arrives. No card details are collected or stored.
+            Choose an available payment method. Advance methods require a receipt upload so we
+            can confirm your payment.
           </p>
-          <div className="mt-5">
-            {codEnabled ? (
-              <label className="flex cursor-pointer items-start gap-3 rounded-[14px] border border-primary/30 bg-primary/5 p-4">
-                <input
-                  type="radio"
-                  value="cod"
-                  defaultChecked
-                  {...register("paymentMethod")}
-                  className="mt-0.5 h-4 w-4 accent-[var(--color-primary)]"
-                />
-                <span>
-                  <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    <CreditCard className="h-4 w-4 text-primary" aria-hidden="true" />
-                    Cash on delivery
-                  </span>
-                  <span className="mt-1 block text-xs text-muted">
-                    Pay the courier when your parcel arrives.
-                  </span>
-                </span>
-              </label>
-            ) : (
+          <div className="mt-5 space-y-3">
+            {paymentOptions.length === 0 ? (
               <Alert tone="warning" title="No payment method available">
-                Cash on delivery is currently disabled. Please contact us to place an order.
+                Online payment options are currently disabled. Please contact us to place an
+                order.
               </Alert>
-            )}
+            ) : null}
+
+            {paymentOptions.map((option) => {
+              const active = selectedPaymentMethod === option.code;
+              const Icon =
+                option.code === "cod"
+                  ? Banknote
+                  : option.code === "jazzcash"
+                    ? Smartphone
+                    : CreditCard;
+
+              return (
+                <div
+                  key={option.code}
+                  className={cn(
+                    "rounded-[14px] border p-4 transition-colors",
+                    active
+                      ? "border-primary/35 bg-primary/5"
+                      : "border-border bg-surface hover:border-primary/20",
+                  )}
+                >
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="radio"
+                      value={option.code}
+                      {...register("paymentMethod", {
+                        onChange: () => setReceiptError(null),
+                      })}
+                      className="mt-0.5 h-4 w-4 accent-[var(--color-primary)]"
+                    />
+                    <span>
+                      <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                        {option.label}
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+
+                  {active && (option.details || option.requiresReceipt) ? (
+                    <div className="mt-4 space-y-4 border-t border-border/80 pt-4 pl-7">
+                      {option.details ? (
+                        <div className="rounded-[10px] bg-surface-soft p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                            Payment details
+                          </p>
+                          <p className="mt-1.5 whitespace-pre-line break-words text-sm text-ink">
+                            {option.details}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="rounded-[10px] border border-warning/25 bg-warning/5 px-3 py-2 text-xs text-muted">
+                          Contact us for payment details before placing this order.
+                        </p>
+                      )}
+
+                      {option.requiresReceipt ? (
+                        <div>
+                          <ImageUploadField
+                            id="paymentReceipt"
+                            name="paymentReceipt"
+                            label="Payment receipt"
+                            hint="Screenshot or photo of your payment. JPG, PNG, WebP or AVIF up to 5 MB."
+                            required
+                            onFileChange={() => setReceiptError(null)}
+                          />
+                          <FieldError
+                            message={
+                              receiptError ?? state.fieldErrors?.paymentReceipt
+                            }
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
             <FieldError message={errors.paymentMethod?.message} />
           </div>
         </section>
@@ -319,7 +405,7 @@ export function CheckoutForm({
           </p>
         ) : null}
 
-        <Button type="submit" size="lg" className="mt-5 w-full" loading={pending} disabled={!connected || !codEnabled}>
+        <Button type="submit" size="lg" className="mt-5 w-full" loading={pending} disabled={!connected || paymentOptions.length === 0}>
           <Lock className="h-4 w-4" aria-hidden="true" />
           {connected ? "Place order" : "Connect Supabase to order"}
         </Button>

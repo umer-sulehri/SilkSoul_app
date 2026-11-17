@@ -106,7 +106,7 @@ export function AdminNav({
         </div>
       </aside>
 
-      <div className="border-b border-border bg-surface lg:hidden">
+      <div className="w-full border-b border-border bg-surface lg:hidden">
         <div className="flex items-center justify-between gap-3 px-5 py-4">
           <Link href="/admin" className="flex items-baseline gap-2">
             <span className="font-serif text-xl leading-none">SilkSoul</span>

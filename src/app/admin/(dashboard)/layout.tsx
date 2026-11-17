@@ -7,7 +7,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const context = await requireStaff();
 
   return (
-    <div className="flex min-h-dvh bg-background">
+    <div className="flex min-h-dvh flex-col bg-background lg:flex-row">
       <AdminNav
         email={context.user?.email ?? ""}
         roles={context.roles}

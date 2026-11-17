@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ClipboardList, Search } from "lucide-react";
+import { OrderStatusQuickForm } from "@/components/admin/order-forms";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -137,7 +138,15 @@ export default async function AdminOrdersPage({
                       <StatusBadge status={order.payment_status} />
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={order.status} />
+                      <div className="space-y-2">
+                        <StatusBadge status={order.status} />
+                        <OrderStatusQuickForm
+                          key={order.status}
+                          orderId={order.id}
+                          orderNumber={order.order_number}
+                          status={order.status}
+                        />
+                      </div>
                     </td>
                     <td className="px-5 py-3 text-right">
                       <Link

@@ -205,7 +205,7 @@ values (
   5000,
   true,
   'Complimentary delivery on orders over Rs 5,000 · Cash on delivery available',
-  '{"instagram":"@silksoul_official"}'::jsonb
+  '{"instagram":"@silksoul_official","theme":{"background":"#f7f5ec","surface":"#fffdf7","surfaceSoft":"#e9efe1","ink":"#1f2d23","muted":"#626e60","primary":"#3e5a44","accent":"#c19a5b","border":"#dbe3d0","success":"#3f6e4e","warning":"#8f5f1f","danger":"#a24c42"},"payments":{"advance":{"enabled":false,"details":""},"jazzcash":{"enabled":false,"details":""}}}'::jsonb
 )
 on conflict (id) do nothing;
 

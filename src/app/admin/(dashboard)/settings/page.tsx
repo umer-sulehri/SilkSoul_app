@@ -25,7 +25,7 @@ export default async function AdminSettingsPage() {
       <AdminPageHeader
         eyebrow="Configuration"
         title="Store settings"
-        description="Delivery, contact details and discount codes used by checkout."
+        description="Store details, full website colours and discount codes."
       />
 
       {!settings ? (

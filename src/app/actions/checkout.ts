@@ -1,9 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Json } from "@/types/database";
 import { isSupabaseConfigured } from "@/lib/env";
+import { validatePaymentReceipt } from "@/lib/payments";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkoutSchema } from "@/lib/validations/schemas";
 import { getClientKey, rateLimit } from "@/lib/rate-limit";
@@ -80,6 +83,62 @@ export async function placeOrderAction(
     };
   }
 
+  const requiresReceipt = parsed.data.paymentMethod !== "cod";
+  let paymentReceiptPath: string | null = null;
+
+  if (requiresReceipt) {
+    const receipt = formData.get("paymentReceipt");
+    if (!(receipt instanceof File) || receipt.size === 0) {
+      return {
+        status: "error",
+        message: "Upload a screenshot or photo of your payment receipt.",
+        fieldErrors: { paymentReceipt: "Payment receipt is required." },
+      };
+    }
+
+    const receiptError = validatePaymentReceipt(receipt);
+    if (receiptError) {
+      return {
+        status: "error",
+        message: receiptError,
+        fieldErrors: { paymentReceipt: receiptError },
+      };
+    }
+
+    const admin = createAdminClient();
+    if (!admin) {
+      return {
+        status: "error",
+        message:
+          "Payment receipt uploads are not configured. Please contact us to complete this order.",
+      };
+    }
+
+    const extension =
+      receipt.type === "image/png"
+        ? "png"
+        : receipt.type === "image/webp"
+          ? "webp"
+          : receipt.type === "image/avif"
+            ? "avif"
+            : "jpg";
+    paymentReceiptPath = `orders/${randomUUID()}.${extension}`;
+
+    const { error: uploadError } = await admin.storage
+      .from("payment-receipts")
+      .upload(paymentReceiptPath, Buffer.from(await receipt.arrayBuffer()), {
+        contentType: receipt.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return {
+        status: "error",
+        message: "We could not upload your payment receipt. Please try again.",
+      };
+    }
+  }
+
   const payload: Json = {
     customer: {
       name: parsed.data.customerName,
@@ -96,6 +155,7 @@ export async function placeOrderAction(
       quantity: item.quantity,
     })),
     payment_method: parsed.data.paymentMethod,
+    payment_receipt_path: paymentReceiptPath,
     coupon_code: parsed.data.couponCode || null,
     customer_note: parsed.data.note || null,
   };
@@ -105,17 +165,25 @@ export async function placeOrderAction(
     p_idempotency_key: parsed.data.idempotencyKey,
   });
 
-  if (error) {
+  if (error || !(data as { order_number?: string } | null)?.order_number) {
+    if (paymentReceiptPath) {
+      const admin = createAdminClient();
+      await admin?.storage.from("payment-receipts").remove([paymentReceiptPath]);
+    }
     return {
       status: "error",
       message:
-        error.message ||
+        error?.message ||
         "We could not place your order. Please check your bag and try again.",
     };
   }
 
   const result = data as { order_number?: string; tracking_token?: string; error?: string } | null;
   if (!result?.order_number || !result.tracking_token) {
+    if (paymentReceiptPath) {
+      const admin = createAdminClient();
+      await admin?.storage.from("payment-receipts").remove([paymentReceiptPath]);
+    }
     return {
       status: "error",
       message: result?.error || "We could not confirm your order. Please try again.",

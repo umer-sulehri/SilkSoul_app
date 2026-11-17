@@ -162,6 +162,30 @@ export type ProductQueryRow = {
   }[];
 };
 
+export type SiteTheme = {
+  background: string;
+  surface: string;
+  surfaceSoft: string;
+  ink: string;
+  muted: string;
+  primary: string;
+  accent: string;
+  border: string;
+  success: string;
+  warning: string;
+  danger: string;
+};
+
+export type PaymentMethodDetails = {
+  enabled: boolean;
+  details: string;
+};
+
+export type PaymentSettings = {
+  advance: PaymentMethodDetails;
+  jazzcash: PaymentMethodDetails;
+};
+
 export type StoreSettings = {
   storeName: string;
   supportEmail: string;
@@ -170,5 +194,7 @@ export type StoreSettings = {
   deliveryFee: number;
   freeDeliveryThreshold: number;
   codEnabled: boolean;
+  payments: PaymentSettings;
   announcement: string | null;
+  theme: SiteTheme;
 };

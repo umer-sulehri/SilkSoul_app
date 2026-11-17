@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Json } from "@/types/database";
-import { getAdminContext } from "@/lib/auth/admin";
+import { getAdminContext, type AdminContext } from "@/lib/auth/admin";
 import { productFormSchema } from "@/lib/validations/schemas";
 
 export type ProductActionState = {
@@ -42,6 +42,60 @@ function friendlyError(message: string) {
   if (message.includes("products_slug_key")) return "That slug is already in use.";
   if (message.includes("products_sku_key")) return "That SKU is already in use.";
   return message;
+}
+
+type ServerSupabase = NonNullable<AdminContext["supabase"]>;
+
+const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+
+function validateProductImage(file: File) {
+  if (!allowedImageTypes.includes(file.type)) {
+    return "Use a JPG, PNG, WebP or AVIF image.";
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return "Images must be smaller than 5 MB.";
+  }
+  return null;
+}
+
+async function storeProductImage(
+  supabase: ServerSupabase,
+  productId: string,
+  file: File,
+): Promise<string | null> {
+  const validationError = validateProductImage(file);
+  if (validationError) return validationError;
+
+  const { data: existing } = await supabase
+    .from("product_images")
+    .select("id, is_primary, sort_order")
+    .eq("product_id", productId);
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-80);
+  const path = `${productId}/${crypto.randomUUID()}-${safeName}`;
+  const buffer = await file.arrayBuffer();
+
+  const { error: uploadError } = await supabase.storage
+    .from("product-images")
+    .upload(path, buffer, { contentType: file.type, upsert: false });
+
+  if (uploadError) return uploadError.message;
+
+  const hasPrimary = (existing ?? []).some((image) => image.is_primary);
+  const { error: insertError } = await supabase.from("product_images").insert({
+    product_id: productId,
+    storage_path: path,
+    alt_text: safeName.replace(/[-_]/g, " ").replace(/\.[^.]+$/, ""),
+    sort_order: (existing ?? []).length,
+    is_primary: !hasPrimary,
+  });
+
+  if (insertError) {
+    await supabase.storage.from("product-images").remove([path]);
+    return insertError.message;
+  }
+
+  return null;
 }
 
 export async function saveProductAction(
@@ -94,6 +148,19 @@ export async function saveProductAction(
   }
 
   const data = parsed.data;
+  const imageValue = formData.get("image");
+  const image = imageValue instanceof File && imageValue.size > 0 ? imageValue : null;
+
+  if (image && !data.id) {
+    const imageError = validateProductImage(image);
+    if (imageError) {
+      return {
+        status: "error",
+        message: imageError,
+        fieldErrors: { image: imageError },
+      };
+    }
+  }
 
   if (data.id && data.companionProductId === data.id) {
     return {
@@ -168,6 +235,16 @@ export async function saveProductAction(
         };
       }
     }
+
+    if (image) {
+      const imageError = await storeProductImage(context.supabase, inserted.id, image);
+      if (imageError) {
+        revalidatePath("/admin/products");
+        redirect(
+          `/admin/products/${inserted.id}/edit?imageError=${encodeURIComponent(imageError)}`,
+        );
+      }
+    }
   }
 
   revalidatePath("/admin/products");
@@ -225,43 +302,9 @@ export async function uploadProductImageAction(
     return { status: "error", message: "Choose an image to upload." };
   }
 
-  const allowed = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-  if (!allowed.includes(file.type)) {
-    return { status: "error", message: "Use a JPG, PNG, WebP or AVIF image." };
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    return { status: "error", message: "Images must be smaller than 5 MB." };
-  }
-
-  const { data: existing } = await context.supabase
-    .from("product_images")
-    .select("id, is_primary, sort_order")
-    .eq("product_id", productId);
-
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-80);
-  const path = `${productId}/${crypto.randomUUID()}-${safeName}`;
-  const buffer = await file.arrayBuffer();
-
-  const { error: uploadError } = await context.supabase.storage
-    .from("product-images")
-    .upload(path, buffer, { contentType: file.type, upsert: false });
-
-  if (uploadError) {
-    return { status: "error", message: uploadError.message };
-  }
-
-  const hasPrimary = (existing ?? []).some((image) => image.is_primary);
-  const { error: insertError } = await context.supabase.from("product_images").insert({
-    product_id: productId,
-    storage_path: path,
-    alt_text: safeName.replace(/[-_]/g, " ").replace(/\.[^.]+$/, ""),
-    sort_order: (existing ?? []).length,
-    is_primary: !hasPrimary,
-  });
-
-  if (insertError) {
-    await context.supabase.storage.from("product-images").remove([path]);
-    return { status: "error", message: insertError.message };
+  const imageError = await storeProductImage(context.supabase, productId, file);
+  if (imageError) {
+    return { status: "error", message: imageError };
   }
 
   revalidatePath(`/admin/products/${productId}/edit`);

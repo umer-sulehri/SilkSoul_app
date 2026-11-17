@@ -2,13 +2,14 @@
 
 import { useActionState } from "react";
 import Image from "next/image";
-import { ImagePlus, Star, Trash2 } from "lucide-react";
+import { Star, Trash2 } from "lucide-react";
 import {
   deleteProductImageAction,
   setPrimaryImageAction,
   uploadProductImageAction,
   type ImageActionState,
 } from "@/app/admin/actions/products";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { productImageUrl } from "@/lib/images";
 
@@ -121,23 +122,14 @@ export function ProductImages({
 
       <form action={formAction} className="mt-5 border-t border-border pt-5">
         <input type="hidden" name="productId" value={productId} />
-        <label className="block text-sm font-medium text-ink" htmlFor="image">
+        <ImageUploadField
+          key={sorted.length}
+          label="Upload product image"
+          required
+        />
+        <Button type="submit" variant="outline" loading={isPending} className="mt-3">
           Upload image
-        </label>
-        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <input
-            id="image"
-            name="image"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            className="block w-full text-sm text-muted file:mr-3 file:rounded-[8px] file:border-0 file:bg-surface-soft file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-border"
-          />
-          <Button type="submit" variant="outline" loading={isPending} className="shrink-0">
-            <ImagePlus className="h-4 w-4" aria-hidden="true" />
-            Upload
-          </Button>
-        </div>
-        <p className="mt-2 text-xs text-muted">JPG, PNG, WebP or AVIF. Maximum 5 MB.</p>
+        </Button>
       </form>
     </section>
   );

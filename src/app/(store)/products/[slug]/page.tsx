@@ -3,27 +3,29 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ChevronRight,
+  ArrowUpRight,
   Check,
+  ChevronRight,
+  Droplets,
+  FlaskConical,
   Leaf,
   Package,
   ShieldCheck,
   Sparkles,
+  Sprout,
 } from "lucide-react";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductPurchase } from "@/components/product/product-purchase";
-import { ProductCard } from "@/components/product/product-card";
-import { CompanionSpotlight } from "@/components/product/companion-spotlight";
+import {
+  ProductSwitcherRail,
+  ProductSwitcherStrip,
+} from "@/components/product/product-switcher";
 import { ReviewForm } from "@/components/reviews/review-form";
 import { Price, StarRating } from "@/components/ui/price";
 import { Badge } from "@/components/ui/badge";
 import { Accordion } from "@/components/ui/accordion";
 import { Container, SectionHeading } from "@/components/ui/layout";
-import {
-  getCompanionProduct,
-  getProductBySlug,
-  getRelatedProducts,
-} from "@/lib/data/products";
+import { getProductBySlug, listProducts } from "@/lib/data/products";
 import { productThemeStyle } from "@/lib/product-theme";
 import { isSupabaseConfigured, siteConfig } from "@/lib/env";
 import { formatDate } from "@/lib/utils";
@@ -54,11 +56,58 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [related, companion] = await Promise.all([
-    getRelatedProducts(product, 3),
-    getCompanionProduct(product),
-  ]);
+  const allProducts = await listProducts();
+  const collection = (allProducts.length > 0 ? allProducts : [product]).sort((a, b) => {
+    if (a.id === product.id) return -1;
+    if (b.id === product.id) return 1;
+    return 0;
+  });
+  const currentIndex = Math.max(
+    0,
+    collection.findIndex((item) => item.id === product.id),
+  );
   const image = product.images[0];
+  const size = product.specifications.find((entry) => entry.label.toLowerCase() === "size");
+  const formula = product.specifications.find((entry) =>
+    ["formula", "key botanicals", "key ingredient"].includes(entry.label.toLowerCase()),
+  );
+
+  const journey = [
+    {
+      icon: Sprout,
+      step: "01",
+      eyebrow: "Origins",
+      title: "Botanical beginnings",
+      body:
+        product.ingredients.length > 0
+          ? `Built around ${product.ingredients.slice(0, 3).join(", ").toLowerCase()}, chosen for their gentle, nourishing character.`
+          : product.shortDescription,
+    },
+    {
+      icon: FlaskConical,
+      step: "02",
+      eyebrow: "Formulation",
+      title: "Blended with intention",
+      body: product.shortDescription,
+    },
+    {
+      icon: Droplets,
+      step: "03",
+      eyebrow: "Ritual",
+      title: "A moment for you",
+      body: product.usageInstructions,
+    },
+    {
+      icon: Sparkles,
+      step: "04",
+      eyebrow: "The finish",
+      title: "How it leaves your hair",
+      body:
+        product.benefits.slice(0, 3).join(" · ") ||
+        "A simple, considered finish that fits naturally into your week.",
+    },
+  ];
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -89,31 +138,71 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   };
 
   return (
-    <div className="pb-24" style={productThemeStyle(product.theme)}>
+    <div className="product-page-shell pb-24" style={productThemeStyle(product.theme)}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
       <Container className="pt-6">
-        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-          <Link href="/" className="hover:text-ink">Home</Link>
-          <ChevronRight className="h-3 w-3" aria-hidden="true" />
-          <Link href="/products" className="hover:text-ink">Shop</Link>
-          {product.category ? (
-            <>
-              <ChevronRight className="h-3 w-3" aria-hidden="true" />
-              <Link href={`/products?category=${product.category.slug}`} className="hover:text-ink">
-                {product.category.name}
-              </Link>
-            </>
+        <div className="flex items-center justify-between gap-4">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex flex-wrap items-center gap-1.5 text-xs text-muted"
+          >
+            <Link href="/" className="hover:text-ink">Home</Link>
+            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+            <Link href="/products" className="hover:text-ink">Shop</Link>
+            {product.category ? (
+              <>
+                <ChevronRight className="h-3 w-3" aria-hidden="true" />
+                <Link
+                  href={`/products?category=${product.category.slug}`}
+                  className="hover:text-ink"
+                >
+                  {product.category.name}
+                </Link>
+              </>
+            ) : null}
+            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+            <span className="text-ink">{product.name}</span>
+          </nav>
+          {collection.length > 1 ? (
+            <span className="hidden shrink-0 rounded-full border border-border/80 bg-surface/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted backdrop-blur sm:inline-flex">
+              Product 0{currentIndex + 1} of 0{collection.length}
+            </span>
           ) : null}
-          <ChevronRight className="h-3 w-3" aria-hidden="true" />
-          <span className="text-ink">{product.name}</span>
-        </nav>
+        </div>
 
-        <div className="mt-8 grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
-          <ProductGallery images={product.images} productName={product.name} />
+        <ProductSwitcherStrip
+          products={collection}
+          currentId={product.id}
+          className="mt-7"
+        />
+
+        <div className="mt-8 grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14 xl:grid-cols-[184px_minmax(0,1fr)_minmax(370px,0.92fr)] xl:gap-10">
+          <ProductSwitcherRail products={collection} currentId={product.id} />
+
+          <div>
+            <ProductGallery images={product.images} productName={product.name} />
+            <div className="mt-4 grid grid-cols-3 gap-2.5 text-center">
+              {[
+                { icon: Leaf, label: "Botanical" },
+                { icon: ShieldCheck, label: "Gentle care" },
+                { icon: Package, label: "Secure packing" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-[12px] border border-border/80 bg-surface/65 px-2 py-3 backdrop-blur"
+                >
+                  <item.icon className="mx-auto h-4 w-4 text-primary" aria-hidden="true" />
+                  <p className="mt-1.5 text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
+                    {item.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -122,20 +211,37 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                   {product.category.name}
                 </p>
               ) : null}
-              {product.isFeatured ? <Badge tone="accent">Bestseller</Badge> : null}
             </div>
             <h1 className="mt-3 font-serif text-4xl leading-tight text-ink sm:text-5xl">
               {product.name}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-4">
-              <Link href="#reviews" className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              <Link
+                href="#reviews"
+                className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
                 <StarRating rating={product.rating} />
               </Link>
               <span className="text-xs text-muted">{product.sku}</span>
             </div>
             <p className="mt-5 text-base leading-relaxed text-muted">{product.shortDescription}</p>
 
-            <div className="mt-6 border-y border-border py-5">
+            {(size || formula) ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {size ? (
+                  <span className="rounded-full border border-border/80 bg-surface/75 px-3 py-1 text-[11px] font-medium text-ink">
+                    {size.value.split("/")[0]?.trim()}
+                  </span>
+                ) : null}
+                {formula ? (
+                  <span className="rounded-full border border-border/80 bg-surface/75 px-3 py-1 text-[11px] font-medium text-ink">
+                    {formula.value.split("/")[0]?.trim()}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="mt-6 border-y border-border/80 py-5">
               <Price
                 amount={product.price}
                 compareAt={product.compareAtPrice}
@@ -143,7 +249,8 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                 size="lg"
               />
               <p className="mt-1 text-xs text-muted">
-                Inclusive of all taxes · {product.availableStock > 0 ? "Ready to ship" : "Currently unavailable"}
+                Inclusive of all taxes ·{" "}
+                {product.availableStock > 0 ? "Ready to ship" : "Currently unavailable"}
               </p>
             </div>
 
@@ -151,24 +258,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               <ProductPurchase product={product} />
             </div>
 
-            {companion ? <CompanionSpotlight product={companion} /> : null}
-
-            <div className="mt-8">
-              <div className="mb-4 grid grid-cols-3 gap-3 text-center">
-                {[
-                  { icon: Leaf, label: "Botanical" },
-                  { icon: ShieldCheck, label: "Gentle care" },
-                  { icon: Package, label: "Secure packing" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-[12px] border border-border bg-surface px-2 py-3">
-                    <item.icon className="mx-auto h-4 w-4 text-primary" aria-hidden="true" />
-                    <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.1em] text-muted">
-                      {item.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
+            <div className="mt-7">
               <Accordion title="Key benefits" defaultOpen>
                 <ul className="space-y-2">
                   {product.benefits.map((benefit) => (
@@ -197,7 +287,10 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               <Accordion title="Specifications">
                 <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
                   {product.specifications.map((specification) => (
-                    <div key={specification.label} className="border-b border-border/60 pb-2 last:border-0">
+                    <div
+                      key={specification.label}
+                      className="border-b border-border/60 pb-2 last:border-0"
+                    >
                       <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
                         {specification.label}
                       </dt>
@@ -211,7 +304,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         </div>
       </Container>
 
-      <section className="mt-20 border-y border-border bg-surface py-16 sm:py-20">
+      <section className="mt-20 border-y border-border/70 bg-surface/80 py-16 backdrop-blur sm:py-20">
         <Container>
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
@@ -219,12 +312,22 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               <p className="mt-5 text-sm leading-relaxed text-muted">{product.description}</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {product.benefits.slice(0, 4).map((benefit) => (
-                  <div key={benefit} className="flex gap-2.5 rounded-[12px] border border-border bg-background p-3.5">
+                  <div
+                    key={benefit}
+                    className="flex gap-2.5 rounded-[12px] border border-border bg-background/70 p-3.5"
+                  >
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
                     <span className="text-sm text-ink">{benefit}</span>
                   </div>
                 ))}
               </div>
+              <Link
+                href="/products"
+                className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+              >
+                Shop the full collection
+                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
             </div>
             <div className="relative overflow-hidden rounded-[22px] border border-border bg-surface-soft">
               {image ? (
@@ -241,7 +344,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                   <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
                   {product.specifications[0]?.value ?? "Made with care"}
                 </p>
-                <p className="mt-1 text-xs leading-relaxed text-muted">
+                <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted">
                   {product.usageInstructions}
                 </p>
               </div>
@@ -250,7 +353,92 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         </Container>
       </section>
 
-      <section id="reviews" className="scroll-mt-24 py-20">
+      <section className="relative overflow-hidden py-20">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-80"
+          style={{
+            background:
+              "radial-gradient(55% 70% at 8% 12%, color-mix(in srgb, var(--color-surface-soft) 92%, transparent), transparent 72%), radial-gradient(45% 55% at 94% 80%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 70%)",
+          }}
+          aria-hidden="true"
+        />
+        <Container className="relative">
+          <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-16">
+            <div>
+              <SectionHeading
+                eyebrow="The product journey"
+                title="From botanical origins to your finishing ritual."
+                description={`Follow ${product.name} through the ingredients that shape it, the ritual it belongs to and the finish it leaves behind.`}
+              />
+              <div className="mt-7 rounded-[20px] border border-border/80 bg-surface/75 p-5 backdrop-blur">
+                <div className="flex items-center gap-4">
+                  <div className="product-stage relative h-20 w-20 shrink-0 overflow-hidden rounded-[14px] border border-border">
+                    {image ? (
+                      <Image
+                        src={image.path}
+                        alt=""
+                        fill
+                        sizes="80px"
+                        className="object-contain p-2"
+                      />
+                    ) : null}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      The collection
+                    </p>
+                    <p className="mt-1 font-serif text-lg text-ink">{product.name}</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {collection.length} considered {collection.length === 1 ? "essential" : "essentials"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {product.ingredients.slice(0, 5).map((ingredient) => (
+                    <span
+                      key={ingredient}
+                      className="rounded-full border border-border bg-background/70 px-2.5 py-1 text-[10px] text-muted"
+                    >
+                      {ingredient}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <ol className="relative space-y-3">
+              <span
+                className="absolute bottom-8 left-[22px] top-8 w-px bg-gradient-to-b from-accent/70 via-primary/30 to-transparent"
+                aria-hidden="true"
+              />
+              {journey.map((step) => (
+                <li
+                  key={step.step}
+                  className="relative flex gap-4 rounded-[18px] border border-transparent p-3 transition-colors hover:border-border/80 hover:bg-surface/60"
+                >
+                  <span className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-surface text-primary shadow-[0_10px_30px_-20px_rgba(31,45,35,0.5)]">
+                    <step.icon className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 pt-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-semibold tracking-[0.16em] text-accent-ink">
+                        {step.step}
+                      </span>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                        {step.eyebrow}
+                      </span>
+                    </div>
+                    <h3 className="mt-1 font-serif text-xl text-ink">{step.title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-muted">{step.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </Container>
+      </section>
+
+      <section id="reviews" className="scroll-mt-24 border-t border-border/70 py-20">
         <Container>
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
             <div>
@@ -263,7 +451,8 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                   <div className="pb-1">
                     <StarRating rating={product.rating} showCount={false} />
                     <p className="mt-1 text-xs text-muted">
-                      {product.rating.count} approved {product.rating.count === 1 ? "review" : "reviews"}
+                      {product.rating.count} approved{" "}
+                      {product.rating.count === 1 ? "review" : "reviews"}
                     </p>
                   </div>
                 </div>
@@ -300,8 +489,13 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {review.isVerifiedPurchase ? <Badge tone="success">Verified purchase</Badge> : null}
-                          <StarRating rating={{ average: review.rating, count: 1 }} showCount={false} />
+                          {review.isVerifiedPurchase ? (
+                            <Badge tone="success">Verified purchase</Badge>
+                          ) : null}
+                          <StarRating
+                            rating={{ average: review.rating, count: 1 }}
+                            showCount={false}
+                          />
                         </div>
                       </div>
                       {review.title ? (
@@ -324,28 +518,6 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
           </div>
         </Container>
       </section>
-
-      {related.length > 0 ? (
-        <section className="border-t border-border bg-surface-soft/40 py-20">
-          <Container>
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-              <SectionHeading
-                eyebrow="Complete the ritual"
-                title={related.length === 1 ? "Explore our other product" : "You may also like"}
-                description="Designed to be used together, but lovely on their own."
-              />
-              <Link href="/products" className="text-sm font-semibold text-primary hover:text-primary-hover">
-                View all products
-              </Link>
-            </div>
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((item) => (
-                <ProductCard key={item.id} product={item} />
-              ))}
-            </div>
-          </Container>
-        </section>
-      ) : null}
     </div>
   );
 }

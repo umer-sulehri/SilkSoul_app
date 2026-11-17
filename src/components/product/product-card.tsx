@@ -48,7 +48,6 @@ export function ProductCard({
           ) : null}
         </Link>
         <div className="pointer-events-none absolute left-3 top-3 z-20 flex flex-col gap-1.5">
-          {product.isFeatured ? <Badge tone="accent">Bestseller</Badge> : null}
           {outOfStock ? (
             <Badge tone="danger">Out of stock</Badge>
           ) : product.availableStock <= product.lowStockThreshold ? (

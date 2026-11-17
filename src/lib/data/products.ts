@@ -1,6 +1,9 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, supabaseConfig } from "@/lib/env";
 import { demoProducts, demoStoreSettings } from "@/lib/demo/catalog";
+import { paymentSettingsFromSocials } from "@/lib/payments";
+import { siteThemeFromSocials } from "@/lib/site-theme";
 import { toArray, toSpecifications } from "@/lib/utils";
 import type {
   CategorySummary,
@@ -371,7 +374,7 @@ export async function getCategories(): Promise<CategorySummary[]> {
   return data;
 }
 
-export async function getStoreSettings(): Promise<StoreSettings> {
+export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
   if (!isSupabaseConfigured()) return demoStoreSettings;
 
   const supabase = await createClient();
@@ -380,7 +383,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   const { data, error } = await supabase
     .from("store_settings")
     .select(
-      "store_name, support_email, support_phone, currency, delivery_fee, free_delivery_threshold, cod_enabled, announcement",
+      "store_name, support_email, support_phone, currency, delivery_fee, free_delivery_threshold, cod_enabled, announcement, socials",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -395,6 +398,8 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     deliveryFee: Number(data.delivery_fee),
     freeDeliveryThreshold: Number(data.free_delivery_threshold),
     codEnabled: data.cod_enabled,
+    payments: paymentSettingsFromSocials(data.socials),
     announcement: data.announcement,
+    theme: siteThemeFromSocials(data.socials),
   };
-}
+});

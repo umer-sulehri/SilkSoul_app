@@ -131,6 +131,21 @@
       );
   }
 
+  .product-page-shell {
+    background-color: color-mix(in srgb, var(--color-surface-soft) 22%, var(--color-background));
+    background-image:
+      radial-gradient(
+        55% 38% at 6% 0%,
+        color-mix(in srgb, var(--color-surface-soft) 80%, transparent),
+        transparent 72%
+      ),
+      radial-gradient(
+        42% 30% at 96% 8%,
+        color-mix(in srgb, var(--color-accent) 10%, transparent),
+        transparent 70%
+      );
+  }
+
   .product-stage {
     background-image: radial-gradient(
       circle at 50% 38%,

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   AdminNotificationRow,
   CouponRow,
@@ -26,6 +27,7 @@ export type AdminOrder = OrderRow & {
   order_items?: OrderItemRow[];
   order_status_history?: OrderStatusHistoryRow[];
   receipts?: ReceiptRow[];
+  paymentReceiptUrl?: string | null;
 };
 
 export type AdminOrderListItem = OrderRow & {
@@ -299,11 +301,23 @@ export async function getAdminOrder(id: string): Promise<AdminOrder | null> {
   const order = orderResult.data as OrderRow | null;
   if (!order) return null;
 
+  let paymentReceiptUrl: string | null = null;
+  if (order.payment_receipt_path) {
+    const admin = createAdminClient();
+    if (admin) {
+      const { data } = await admin.storage
+        .from("payment-receipts")
+        .createSignedUrl(order.payment_receipt_path, 60 * 10);
+      paymentReceiptUrl = data?.signedUrl ?? null;
+    }
+  }
+
   return {
     ...order,
     order_items: (itemsResult.data ?? []) as OrderItemRow[],
     order_status_history: (historyResult.data ?? []) as OrderStatusHistoryRow[],
     receipts: (receiptsResult.data ?? []) as ReceiptRow[],
+    paymentReceiptUrl,
   };
 }
 

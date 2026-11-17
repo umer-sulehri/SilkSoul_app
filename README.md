@@ -5,11 +5,11 @@ Premium botanical haircare storefront and admin studio for SILK Soul. Built with
 ## What is included
 
 - Responsive editorial storefront: home, shop, filters, product detail, reviews, story, FAQ, contact and policies.
-- Cart persisted in the browser, server-validated cash-on-delivery checkout, order success and phone-based tracking.
+- Cart persisted in the browser, server-validated checkout with COD, advance/card or JazzCash options, order success and phone-based tracking.
 - Supabase schema with catalog, inventory, orders, reviews, coupons, quotations, receipts, audit logs and notifications.
 - Atomic order function that re-prices products, checks stock, reserves inventory and supports idempotent submissions.
 - Row Level Security for customers, staff and administrators plus a public product-image bucket.
-- Protected admin studio: dashboard, products, image uploads, inventory movements, order fulfilment, quotations, receipts, review moderation, settings, discount codes and team roles.
+- Protected admin studio: dashboard, products, image uploads, inventory movements, order fulfilment, payment receipt verification, quotations, receipts, review moderation, settings, discount codes and team roles.
 - Branded quotation and receipt PDFs rendered on demand with `pdf-lib`; quotations can be converted into stock-reserving orders.
 
 ## Requirements
@@ -46,6 +46,9 @@ supabase/migrations/0003_rls.sql
 supabase/migrations/0004_documents.sql
 supabase/migrations/0005_search_path.sql
 supabase/migrations/0006_product_experience.sql
+supabase/migrations/0007_payments.sql
+supabase/migrations/0008_order_status_jumps.sql
+supabase/migrations/0009_order_reship.sql
 ```
 
 4. Seed the starter catalog, store settings and administrator login:
@@ -97,21 +100,29 @@ Roles are enforced by Supabase RLS on every table and by server checks in admin 
 ## Order lifecycle
 
 1. Checkout posts the cart, customer details and an idempotency key.
-2. `create_order` locks products, re-prices from the database, validates stock, applies a valid coupon and reserves inventory.
+2. `create_order` locks products, re-prices from the database, validates stock, applies a valid coupon, validates the selected payment method/receipt and reserves inventory.
 3. Status changes run through `admin_update_order_status`:
    - `pending → confirmed → processing → shipped → delivered`
-   - cancellation releases reservations
+   - admins can skip forward from Pending or Confirmed to Processing, Shipped or Delivered
+   - cancellation is available before delivery and releases reservations
    - delivery deducts on-hand stock
-   - returns add stock back
+   - returns add stock back after delivery
+   - returned orders can be marked shipped again, which reserves their stock for the new delivery
 4. Every stock change creates an inventory movement and an audit entry.
 
-Cash on delivery is the only enabled payment method. Payment status is tracked separately so admins can mark orders paid after collection.
+## Payment methods and receipts
+
+- Configure **Cash on delivery**, **Advance payment** and **JazzCash** in **Admin → Settings → Payment methods**. COD uses the existing `cod_enabled` flag; advance/JazzCash settings live under `store_settings.socials.payments`.
+- Advance payment and JazzCash require the customer to upload a JPG, PNG, WebP or AVIF receipt (maximum 5 MB) at checkout.
+- Receipts are uploaded server-side to the private `payment-receipts` Storage bucket. The database validates that the referenced object exists before creating the order.
+- Admin order pages show a short-lived signed receipt preview. Staff can confirm the receipt, which marks the order paid and records `payment_confirmed_at` / `payment_confirmed_by`.
+- Receipt uploads and signed previews require `SUPABASE_SERVICE_ROLE_KEY`. Payment status remains separately editable for manual adjustments and COD collection.
 
 ## Quotations and receipts
 
 - Create quotations in **Admin → Quotations**. They support line-level pricing, discounts, delivery, tax, notes and a validity date.
 - Mark a quotation **accepted**, then convert it. Conversion rechecks availability, reserves stock atomically and creates a pending COD order while keeping the quoted prices and totals.
-- Generate receipts from an order. A receipt snapshots the payment status at issue time; unpaid COD orders are clearly labelled **unpaid** and must not be treated as proof of payment.
+- Generate receipts from an order. A receipt snapshots the payment status at issue time; unpaid orders are clearly labelled **unpaid** and must not be treated as proof of payment.
 - PDFs preview inline and download with a `?download=1` link. The PDFs embed the brand logo and store contact settings.
 
 ## Product images

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldError, HelperText, Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/ui/badge";
+import { paymentMethodLabel } from "@/lib/payments";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { OrderStatus } from "@/types/database";
 
@@ -134,7 +135,7 @@ export function TrackOrderForm() {
               <div className="flex justify-between text-muted">
                 <dt>Payment</dt>
                 <dd className="capitalize text-ink">
-                  {order.paymentMethod.replaceAll("_", " ")} · {order.paymentStatus}
+                  {paymentMethodLabel(order.paymentMethod)} · {order.paymentStatus}
                 </dd>
               </div>
               <div className="flex justify-between border-t border-border pt-3 text-base font-semibold text-ink">

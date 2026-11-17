@@ -15,10 +15,13 @@ export const metadata: Metadata = { title: "Edit product" };
 
 export default async function EditProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ imageError?: string }>;
 }) {
   const { id } = await params;
+  const { imageError } = await searchParams;
   const [product, categories, productOptions] = await Promise.all([
     getAdminProduct(id),
     listAdminCategories(),
@@ -52,6 +55,13 @@ export default async function EditProductPage({
           </Link>
         }
       />
+
+      {imageError ? (
+        <div className="rounded-[12px] border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+          <p className="font-semibold text-ink">The product was saved, but its image could not be uploaded.</p>
+          <p className="mt-1 text-muted">{imageError} You can upload it again below.</p>
+        </div>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <ProductForm

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Json } from "@/types/database";
 import { getAdminContext } from "@/lib/auth/admin";
+import { defaultSiteTheme } from "@/lib/site-theme";
 import { couponFormSchema, storeSettingsSchema } from "@/lib/validations/schemas";
 
 export type SettingsActionState = {
@@ -30,9 +31,24 @@ export async function saveStoreSettingsAction(
     deliveryFee: formData.get("deliveryFee"),
     freeDeliveryThreshold: formData.get("freeDeliveryThreshold"),
     codEnabled: formData.get("codEnabled") === "on",
+    advancePaymentEnabled: formData.get("advancePaymentEnabled") === "on",
+    advancePaymentDetails: formData.get("advancePaymentDetails") || undefined,
+    jazzcashEnabled: formData.get("jazzcashEnabled") === "on",
+    jazzcashDetails: formData.get("jazzcashDetails") || undefined,
     announcement: formData.get("announcement") || undefined,
     address: formData.get("address") || undefined,
     instagram: formData.get("instagram") || undefined,
+    themeBackground: formData.get("themeBackground") || defaultSiteTheme.background,
+    themeSurface: formData.get("themeSurface") || defaultSiteTheme.surface,
+    themeSurfaceSoft: formData.get("themeSurfaceSoft") || defaultSiteTheme.surfaceSoft,
+    themeInk: formData.get("themeInk") || defaultSiteTheme.ink,
+    themeMuted: formData.get("themeMuted") || defaultSiteTheme.muted,
+    themePrimary: formData.get("themePrimary") || defaultSiteTheme.primary,
+    themeAccent: formData.get("themeAccent") || defaultSiteTheme.accent,
+    themeBorder: formData.get("themeBorder") || defaultSiteTheme.border,
+    themeSuccess: formData.get("themeSuccess") || defaultSiteTheme.success,
+    themeWarning: formData.get("themeWarning") || defaultSiteTheme.warning,
+    themeDanger: formData.get("themeDanger") || defaultSiteTheme.danger,
   });
 
   if (!parsed.success) {
@@ -58,6 +74,29 @@ export async function saveStoreSettingsAction(
       address: parsed.data.address || null,
       socials: {
         instagram: parsed.data.instagram || null,
+        theme: {
+          background: parsed.data.themeBackground,
+          surface: parsed.data.themeSurface,
+          surfaceSoft: parsed.data.themeSurfaceSoft,
+          ink: parsed.data.themeInk,
+          muted: parsed.data.themeMuted,
+          primary: parsed.data.themePrimary,
+          accent: parsed.data.themeAccent,
+          border: parsed.data.themeBorder,
+          success: parsed.data.themeSuccess,
+          warning: parsed.data.themeWarning,
+          danger: parsed.data.themeDanger,
+        },
+        payments: {
+          advance: {
+            enabled: parsed.data.advancePaymentEnabled,
+            details: parsed.data.advancePaymentDetails ?? "",
+          },
+          jazzcash: {
+            enabled: parsed.data.jazzcashEnabled,
+            details: parsed.data.jazzcashDetails ?? "",
+          },
+        },
       } as Json,
     })
     .eq("id", 1);
