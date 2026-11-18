@@ -10,10 +10,12 @@ import {
   Truck,
 } from "lucide-react";
 import { HeroProductFlipper } from "@/components/storefront/hero-product-flipper";
+import { MobileHeroSlider } from "@/components/storefront/mobile-hero-slider";
+import { MobileProductList } from "@/components/storefront/mobile-product-list";
 import { ProductCard } from "@/components/product/product-card";
 import { Container, SectionHeading } from "@/components/ui/layout";
 import { buttonVariants } from "@/components/ui/button";
-import { getFeaturedProducts } from "@/lib/data/products";
+import { getFeaturedProducts, listProducts } from "@/lib/data/products";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/lib/env";
 
@@ -49,13 +51,17 @@ const ingredients = [
 
 export default async function HomePage() {
   const featured = await getFeaturedProducts(4);
+  const mobileProducts = await listProducts();
 
   return (
     <>
-      <HeroProductFlipper products={featured} />
+      <div className="hidden sm:block">
+        <HeroProductFlipper products={featured} />
+      </div>
+      <MobileHeroSlider products={featured} />
 
       <section className="border-y border-border/80 bg-surface">
-        <Container className="grid gap-2 py-5 sm:grid-cols-2 lg:grid-cols-4">
+        <Container className="grid grid-cols-2 gap-2 py-4 sm:grid-cols-2 sm:py-5 lg:grid-cols-4">
           {values.map((value) => (
             <div
               key={value.title}
@@ -73,7 +79,7 @@ export default async function HomePage() {
         </Container>
       </section>
 
-      <section id="featured-products" className="scroll-mt-24 py-20 sm:py-24">
+      <section id="featured-products" className="scroll-mt-24 py-14 sm:py-24">
         <Container>
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
             <SectionHeading
@@ -104,7 +110,7 @@ export default async function HomePage() {
         </Container>
       </section>
 
-      <section className="bg-surface py-20 sm:py-24">
+      <section className="bg-surface py-14 sm:py-24">
         <Container>
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="relative order-2 lg:order-1">
@@ -198,7 +204,7 @@ export default async function HomePage() {
         </Container>
       </section>
 
-      <section className="py-20 sm:py-24">
+      <section className="py-14 sm:py-24">
         <Container>
           <SectionHeading
             eyebrow="Inside the bottle"
@@ -231,7 +237,7 @@ export default async function HomePage() {
         </Container>
       </section>
 
-      <section className="pb-20 sm:pb-24">
+      <section className="pb-14 sm:pb-24">
         <Container>
           <div className="botanical-panel relative overflow-hidden rounded-[30px] border border-primary-hover/60 bg-primary text-white shadow-[0_35px_90px_-52px_rgba(31,45,35,0.75)]">
             <Leaf
@@ -283,7 +289,7 @@ export default async function HomePage() {
         </Container>
       </section>
 
-      <section className="pb-24">
+      <section className="pb-16 sm:pb-24">
         <Container>
           <div className="herbal-wash relative flex flex-col items-center overflow-hidden rounded-[28px] border border-border/80 bg-surface px-6 py-14 text-center shadow-[0_28px_65px_-50px_rgba(31,45,35,0.5)] sm:px-10">
             <Leaf
@@ -316,6 +322,8 @@ export default async function HomePage() {
           </div>
         </Container>
       </section>
+
+      <MobileProductList products={mobileProducts} />
     </>
   );
 }

@@ -60,7 +60,7 @@ export function HeroProductFlipper({ products }: { products: Product[] }) {
   };
 
   return (
-    <section className="herbal-wash relative overflow-hidden pb-20 pt-10 sm:pt-14 lg:pb-28 lg:pt-20">
+    <section className="herbal-wash relative overflow-hidden pb-12 pt-6 sm:pb-20 sm:pt-14 lg:pb-28 lg:pt-20">
       <Leaf
         className="pointer-events-none absolute -left-16 top-24 h-80 w-80 -rotate-12 text-primary/[0.045]"
         strokeWidth={1}
@@ -75,7 +75,7 @@ export function HeroProductFlipper({ products }: { products: Product[] }) {
         aria-hidden="true"
       />
       <div className="mx-auto grid w-full max-w-[1280px] items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
-        <div className="animate-fade-up">
+        <div className="hidden animate-fade-up sm:block">
           <p className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-surface/70 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary shadow-sm backdrop-blur">
             <Leaf className="h-3.5 w-3.5 text-accent-ink" aria-hidden="true" />
             Botanical haircare, made with care
