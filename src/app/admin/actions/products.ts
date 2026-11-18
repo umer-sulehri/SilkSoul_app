@@ -99,6 +99,78 @@ async function storeProductImage(
   return null;
 }
 
+async function storeNewProductMedia(
+  supabase: ServerSupabase,
+  productId: string,
+  images: File[],
+  video: File | null,
+): Promise<string | null> {
+  const uploadedPaths: string[] = [];
+  const insertedIds: string[] = [];
+  let sortOrder = 0;
+
+  async function uploadAndInsert(
+    file: File,
+    mediaType: "image" | "video",
+    isPrimary: boolean,
+  ): Promise<string | null> {
+    const uploaded = await uploadMediaFile(supabase, productId, file);
+    if (uploaded.error || !uploaded.path) {
+      return uploaded.error ?? "The file could not be uploaded.";
+    }
+    uploadedPaths.push(uploaded.path);
+
+    const { data: inserted, error } = await supabase
+      .from("product_images")
+      .insert({
+        product_id: productId,
+        storage_path: uploaded.path,
+        alt_text: file.name.replace(/[-_]/g, " ").replace(/\.[^.]+$/, ""),
+        sort_order: sortOrder,
+        is_primary: isPrimary,
+      })
+      .select("id")
+      .single();
+
+    if (error || !inserted) {
+      return error?.message ?? "The media could not be saved.";
+    }
+
+    insertedIds.push(inserted.id);
+    sortOrder += 1;
+    return null;
+  }
+
+  async function cleanup() {
+    if (insertedIds.length > 0) {
+      await supabase.from("product_images").delete().in("id", insertedIds);
+    }
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from("product-images").remove(uploadedPaths);
+    }
+  }
+
+  let imageIndex = 0;
+  for (const file of images) {
+    const errorMessage = await uploadAndInsert(file, "image", imageIndex === 0);
+    if (errorMessage) {
+      await cleanup();
+      return errorMessage;
+    }
+    imageIndex += 1;
+  }
+
+  if (video) {
+    const errorMessage = await uploadAndInsert(video, "video", false);
+    if (errorMessage) {
+      await cleanup();
+      return errorMessage;
+    }
+  }
+
+  return null;
+}
+
 export async function saveProductAction(
   _previousState: ProductActionState,
   formData: FormData,
@@ -151,15 +223,44 @@ export async function saveProductAction(
   const data = parsed.data;
   const imageValue = formData.get("image");
   const image = imageValue instanceof File && imageValue.size > 0 ? imageValue : null;
+  const imageFiles = formData
+    .getAll("images")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  if (image) imageFiles.unshift(image);
 
-  if (image && !data.id) {
-    const imageError = validateProductImage(image);
-    if (imageError) {
+  const videoValue = formData.get("video");
+  const video =
+    videoValue instanceof File && videoValue.size > 0 ? videoValue : null;
+
+  if (!data.id) {
+    if (imageFiles.length > maxProductImages) {
       return {
         status: "error",
-        message: imageError,
-        fieldErrors: { image: imageError },
+        message: `You can upload up to ${maxProductImages} images.`,
+        fieldErrors: { images: `Choose ${maxProductImages} images or fewer.` },
       };
+    }
+
+    for (const file of imageFiles) {
+      const imageError = validateProductImage(file);
+      if (imageError) {
+        return {
+          status: "error",
+          message: imageError,
+          fieldErrors: { images: imageError },
+        };
+      }
+    }
+
+    if (video) {
+      const videoError = validateProductVideo(video);
+      if (videoError) {
+        return {
+          status: "error",
+          message: videoError,
+          fieldErrors: { video: videoError },
+        };
+      }
     }
   }
 
@@ -237,12 +338,17 @@ export async function saveProductAction(
       }
     }
 
-    if (image) {
-      const imageError = await storeProductImage(context.supabase, inserted.id, image);
-      if (imageError) {
+    if (imageFiles.length > 0 || video) {
+      const mediaError = await storeNewProductMedia(
+        context.supabase,
+        inserted.id,
+        imageFiles,
+        video,
+      );
+      if (mediaError) {
         revalidatePath("/admin/products");
         redirect(
-          `/admin/products/${inserted.id}/edit?imageError=${encodeURIComponent(imageError)}`,
+          `/admin/products/${inserted.id}/edit?imageError=${encodeURIComponent(mediaError)}`,
         );
       }
     }

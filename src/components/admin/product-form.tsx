@@ -8,7 +8,7 @@ import {
   type ProductActionState,
 } from "@/app/admin/actions/products";
 import { ColorField } from "@/components/admin/color-field";
-import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { ProductMediaPicker } from "@/components/admin/product-media-picker";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { FieldError, HelperText, Label } from "@/components/ui/label";
@@ -396,11 +396,15 @@ export function ProductForm({
 
       {withImageUpload && !product ? (
         <Section
-          title="Product image"
-          description="Upload the primary image now. You can add more images after saving."
+          title="Product media"
+          description="Add up to 5 images and one short video. The first image becomes the primary image."
         >
-          <ImageUploadField label="Primary product image" />
-          <FieldError message={state.fieldErrors?.image} />
+          <ProductMediaPicker
+            errors={{
+              images: state.fieldErrors?.images,
+              video: state.fieldErrors?.video,
+            }}
+          />
         </Section>
       ) : null}
 
