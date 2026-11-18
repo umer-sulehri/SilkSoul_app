@@ -8,24 +8,27 @@ import {
   type SettingsActionState,
 } from "@/app/admin/actions/settings";
 import { ColorField } from "@/components/admin/color-field";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { FieldError, HelperText, Label } from "@/components/ui/label";
 import { paymentSettingsFromSocials } from "@/lib/payments";
+import {
+  siteImageKeys,
+  siteImageLabels,
+  siteImagesFromSocials,
+  siteImageSrc,
+  socialLabels,
+  socialLinksFromSocials,
+  socialPlaceholders,
+  socialPlatforms,
+} from "@/lib/site-content";
 import { siteThemeFieldNames, siteThemeFromSocials } from "@/lib/site-theme";
 import type { SiteTheme } from "@/types/catalog";
 import type { StoreSettingsRow } from "@/types/database";
 
 const initialSettings: SettingsActionState = { status: "idle" };
 const initialCoupon: CouponActionState = { status: "idle" };
-
-function getInstagram(socials: unknown) {
-  if (socials && typeof socials === "object" && !Array.isArray(socials)) {
-    const value = (socials as Record<string, unknown>).instagram;
-    return typeof value === "string" ? value : "";
-  }
-  return "";
-}
 
 const themeFields: { key: keyof SiteTheme; label: string }[] = [
   { key: "primary", label: "Primary" },
@@ -166,6 +169,8 @@ export function StoreSettingsForm({ settings }: { settings: StoreSettingsRow }) 
   );
   const savedTheme = siteThemeFromSocials(settings.socials);
   const savedPayments = paymentSettingsFromSocials(settings.socials);
+  const savedSocials = socialLinksFromSocials(settings.socials);
+  const savedImages = siteImagesFromSocials(settings.socials);
   const [themeResetKey, setThemeResetKey] = useState(0);
 
   return (
@@ -267,15 +272,57 @@ export function StoreSettingsForm({ settings }: { settings: StoreSettingsRow }) 
           />
           <FieldError message={state.fieldErrors?.address} />
         </div>
+      </div>
+
+      <div className="border-t border-border pt-6">
         <div>
-          <Label htmlFor="instagram">Instagram handle</Label>
-          <Input
-            id="instagram"
-            name="instagram"
-            defaultValue={getInstagram(settings.socials)}
-            placeholder="@silksoul_official"
-          />
-          <FieldError message={state.fieldErrors?.instagram} />
+          <h3 className="font-serif text-lg text-ink">Social links</h3>
+          <p className="mt-1 max-w-2xl text-sm text-muted">
+            Add your profile links or handles. These appear in the storefront footer and
+            contact page so customers can follow you.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-5 sm:grid-cols-3">
+          {socialPlatforms.map((platform) => (
+            <div key={platform}>
+              <Label htmlFor={platform}>{socialLabels[platform]}</Label>
+              <Input
+                id={platform}
+                name={platform}
+                defaultValue={savedSocials[platform]}
+                placeholder={socialPlaceholders[platform]}
+              />
+              <HelperText>Full URL or @handle.</HelperText>
+              <FieldError message={state.fieldErrors?.[platform]} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <div>
+          <h3 className="font-serif text-lg text-ink">Website images</h3>
+          <p className="mt-1 max-w-2xl text-sm text-muted">
+            Replace any picture shown on the storefront. Product photos are managed from
+            the products section.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-6 md:grid-cols-2">
+          {siteImageKeys.map((key) => (
+            <div key={key}>
+              <input type="hidden" name={`${key}Current`} value={savedImages[key]} />
+              <ImageUploadField
+                id={`${key}File`}
+                name={`${key}File`}
+                label={siteImageLabels[key].label}
+                hint={siteImageLabels[key].hint}
+                currentSrc={siteImageSrc(savedImages[key])}
+              />
+              <FieldError message={state.fieldErrors?.[`${key}File`]} />
+            </div>
+          ))}
         </div>
       </div>
 

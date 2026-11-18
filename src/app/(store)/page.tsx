@@ -15,7 +15,8 @@ import { MobileProductList } from "@/components/storefront/mobile-product-list";
 import { ProductCard } from "@/components/product/product-card";
 import { Container, SectionHeading } from "@/components/ui/layout";
 import { buttonVariants } from "@/components/ui/button";
-import { getFeaturedProducts, listProducts } from "@/lib/data/products";
+import { getFeaturedProducts, getStoreSettings, listProducts } from "@/lib/data/products";
+import { siteImageSrc } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/lib/env";
 
@@ -50,8 +51,11 @@ const ingredients = [
 ];
 
 export default async function HomePage() {
-  const featured = await getFeaturedProducts(4);
-  const mobileProducts = await listProducts();
+  const [featured, mobileProducts, settings] = await Promise.all([
+    getFeaturedProducts(4),
+    listProducts(),
+    getStoreSettings(),
+  ]);
 
   return (
     <>
@@ -117,7 +121,7 @@ export default async function HomePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="product-stage relative aspect-[3/4] overflow-hidden rounded-[26px] border border-border/80 shadow-[0_18px_45px_-38px_rgba(31,45,35,0.45)] ring-1 ring-white/70">
                   <Image
-                    src="/images/product-1-hair-oil.jpeg"
+                    src={siteImageSrc(settings.images.homeRitualOil)}
                     alt="SILK Soul Natural Hair Oil"
                     fill
                     sizes="(max-width: 1024px) 45vw, 260px"
@@ -126,7 +130,7 @@ export default async function HomePage() {
                 </div>
                 <div className="product-stage relative mt-10 aspect-[3/4] overflow-hidden rounded-[26px] border border-border/80 shadow-[0_18px_45px_-38px_rgba(31,45,35,0.45)] ring-1 ring-white/70">
                   <Image
-                    src="/images/product-2-milky-shampoo.jpeg"
+                    src={siteImageSrc(settings.images.homeRitualShampoo)}
                     alt="SILK Soul Milky Repair & Smooth Shampoo"
                     fill
                     sizes="(max-width: 1024px) 45vw, 260px"

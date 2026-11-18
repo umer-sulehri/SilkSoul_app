@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowRight, Droplets, Leaf, Sparkles } from "lucide-react";
 import { Container, SectionHeading } from "@/components/ui/layout";
 import { buttonVariants } from "@/components/ui/button";
+import { getStoreSettings } from "@/lib/data/products";
+import { siteImageSrc, type SiteImageKey } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -36,7 +38,7 @@ const products = [
     name: "Natural Hair Oil",
     copy: "A slow botanical blend of rosemary, fenugreek, argan and castor oils. It conditions the scalp, softens the lengths and leaves a quiet shine without a heavy film.",
     href: "/products/natural-hair-oil",
-    image: "/images/product-1-hair-oil.jpeg",
+    imageKey: "aboutHeroOil",
     alt: "SILK Soul Natural Hair Oil",
     action: "Discover the oil",
   },
@@ -45,13 +47,23 @@ const products = [
     name: "Milky Repair & Smooth Shampoo",
     copy: "A sulphate-free cleanse with milky extracts. It lifts away buildup while keeping hair soft, smooth and comfortable, so the ritual ends feeling clean rather than stripped.",
     href: "/products/milky-repair-smooth-shampoo",
-    image: "/images/product-2-milky-shampoo.jpeg",
+    imageKey: "aboutHeroShampoo",
     alt: "SILK Soul Milky Repair & Smooth Shampoo",
     action: "Discover the shampoo",
   },
-];
+] satisfies {
+  step: string;
+  name: string;
+  copy: string;
+  href: string;
+  imageKey: SiteImageKey;
+  alt: string;
+  action: string;
+}[];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const settings = await getStoreSettings();
+
   return (
     <div className="pb-24">
       <section className="relative overflow-hidden border-b border-border bg-surface py-16 sm:py-20">
@@ -89,7 +101,7 @@ export default function AboutPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="product-stage relative aspect-[3/4] overflow-hidden rounded-[24px] border border-border/80 shadow-[0_18px_45px_-38px_rgba(31,45,35,0.45)] ring-1 ring-white/70">
                   <Image
-                    src="/images/product-1-hair-oil.jpeg"
+                    src={siteImageSrc(settings.images.aboutHeroOil)}
                     alt="SILK Soul Natural Hair Oil"
                     fill
                     sizes="(max-width: 1024px) 45vw, 250px"
@@ -98,7 +110,7 @@ export default function AboutPage() {
                 </div>
                 <div className="product-stage relative mt-10 aspect-[3/4] overflow-hidden rounded-[24px] border border-border/80 shadow-[0_18px_45px_-38px_rgba(31,45,35,0.45)] ring-1 ring-white/70">
                   <Image
-                    src="/images/product-2-milky-shampoo.jpeg"
+                    src={siteImageSrc(settings.images.aboutHeroShampoo)}
                     alt="SILK Soul Milky Repair & Smooth Shampoo"
                     fill
                     sizes="(max-width: 1024px) 45vw, 250px"
@@ -164,7 +176,7 @@ export default function AboutPage() {
               >
                 <div className="product-stage relative aspect-[4/3.7] border-b border-border/60">
                   <Image
-                    src={product.image}
+                    src={siteImageSrc(settings.images[product.imageKey])}
                     alt={product.alt}
                     fill
                     sizes="(max-width: 768px) 90vw, 460px"

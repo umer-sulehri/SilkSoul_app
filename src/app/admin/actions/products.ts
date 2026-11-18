@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Json } from "@/types/database";
 import { getAdminContext, type AdminContext } from "@/lib/auth/admin";
+import { productMediaType } from "@/lib/images";
 import { productFormSchema } from "@/lib/validations/schemas";
 
 export type ProductActionState = {
@@ -287,6 +288,185 @@ export type ImageActionState = {
   message?: string;
 };
 
+const allowedVideoTypes = ["video/mp4", "video/webm", "video/quicktime"];
+const maxProductImages = 5;
+const maxProductVideos = 1;
+
+function validateProductVideo(file: File) {
+  if (!allowedVideoTypes.includes(file.type)) {
+    return "Use an MP4, WebM or MOV video.";
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    return "Videos must be smaller than 25 MB.";
+  }
+  return null;
+}
+
+async function uploadMediaFile(
+  supabase: ServerSupabase,
+  productId: string,
+  file: File,
+): Promise<{ path?: string; error?: string }> {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-80);
+  const path = `${productId}/${crypto.randomUUID()}-${safeName}`;
+  const buffer = await file.arrayBuffer();
+
+  const { error } = await supabase.storage
+    .from("product-images")
+    .upload(path, buffer, { contentType: file.type, upsert: false });
+
+  if (error) return { error: error.message };
+  return { path };
+}
+
+export async function uploadProductMediaAction(
+  _previousState: ImageActionState,
+  formData: FormData,
+): Promise<ImageActionState> {
+  const context = await getAdminContext();
+  if (!context.isStaff || !context.supabase) {
+    return { status: "error", message: "You do not have permission to upload media." };
+  }
+
+  const productId = String(formData.get("productId") ?? "");
+  const imageFiles = formData
+    .getAll("images")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  const videoEntry = formData.get("video");
+  const videoFile =
+    videoEntry instanceof File && videoEntry.size > 0 ? videoEntry : null;
+
+  if (!productId) {
+    return { status: "error", message: "Missing product." };
+  }
+  if (imageFiles.length === 0 && !videoFile) {
+    return { status: "error", message: "Choose at least one image or a video to upload." };
+  }
+
+  for (const file of imageFiles) {
+    const validationError = validateProductImage(file);
+    if (validationError) return { status: "error", message: validationError };
+  }
+  if (videoFile) {
+    const validationError = validateProductVideo(videoFile);
+    if (validationError) return { status: "error", message: validationError };
+  }
+
+  const [{ data: existing, error: existingError }, { data: product }] = await Promise.all([
+    context.supabase
+      .from("product_images")
+      .select("id, storage_path, is_primary, sort_order")
+      .eq("product_id", productId),
+    context.supabase.from("products").select("slug").eq("id", productId).maybeSingle(),
+  ]);
+
+  if (existingError) {
+    return { status: "error", message: existingError.message };
+  }
+
+  const existingRows = existing ?? [];
+  const existingImages = existingRows.filter(
+    (row) => productMediaType(row.storage_path) === "image",
+  );
+  const existingVideos = existingRows.filter(
+    (row) => productMediaType(row.storage_path) === "video",
+  );
+
+  if (existingImages.length + imageFiles.length > maxProductImages) {
+    return {
+      status: "error",
+      message: `You can have up to ${maxProductImages} images per product. This product already has ${existingImages.length}.`,
+    };
+  }
+  if (videoFile && existingVideos.length >= maxProductVideos) {
+    return {
+      status: "error",
+      message: "This product already has a video. Delete the current video before adding another.",
+    };
+  }
+
+  const uploadedPaths: string[] = [];
+  const insertedIds: string[] = [];
+  const highestOrder = existingRows.reduce(
+    (highest, row) => Math.max(highest, row.sort_order),
+    -1,
+  );
+  let nextOrder = highestOrder + 1;
+  let hasPrimary = existingImages.some((row) => row.is_primary);
+
+  async function insertMedia(
+    file: File,
+    mediaType: "image" | "video",
+    sortOrder: number,
+  ): Promise<string | null> {
+    const uploaded = await uploadMediaFile(context.supabase!, productId, file);
+    if (uploaded.error || !uploaded.path) {
+      return uploaded.error ?? "The file could not be uploaded.";
+    }
+    uploadedPaths.push(uploaded.path);
+
+    const { data: inserted, error } = await context.supabase!.from("product_images")
+      .insert({
+        product_id: productId,
+        storage_path: uploaded.path,
+        alt_text: file.name.replace(/[-_]/g, " ").replace(/\.[^.]+$/, ""),
+        sort_order: sortOrder,
+        is_primary: mediaType === "image" && !hasPrimary,
+      })
+      .select("id")
+      .single();
+
+    if (error || !inserted) {
+      return error?.message ?? "The media could not be saved.";
+    }
+
+    if (mediaType === "image") hasPrimary = true;
+    insertedIds.push(inserted.id);
+    return null;
+  }
+
+  for (const file of imageFiles) {
+    const errorMessage = await insertMedia(file, "image", nextOrder);
+    if (errorMessage) {
+      if (uploadedPaths.length > 0) {
+        await context.supabase.storage.from("product-images").remove(uploadedPaths);
+      }
+      if (insertedIds.length > 0) {
+        await context.supabase.from("product_images").delete().in("id", insertedIds);
+      }
+      return { status: "error", message: errorMessage };
+    }
+    nextOrder += 1;
+  }
+
+  if (videoFile) {
+    const errorMessage = await insertMedia(videoFile, "video", nextOrder);
+    if (errorMessage) {
+      if (uploadedPaths.length > 0) {
+        await context.supabase.storage.from("product-images").remove(uploadedPaths);
+      }
+      if (insertedIds.length > 0) {
+        await context.supabase.from("product_images").delete().in("id", insertedIds);
+      }
+      return { status: "error", message: errorMessage };
+    }
+  }
+
+  revalidatePath(`/admin/products/${productId}/edit`);
+  revalidatePath("/admin/products");
+  revalidatePath("/products");
+  if (product?.slug) revalidatePath(`/products/${product.slug}`);
+
+  const parts = [
+    imageFiles.length > 0
+      ? `${imageFiles.length} image${imageFiles.length === 1 ? "" : "s"}`
+      : null,
+    videoFile ? "1 video" : null,
+  ].filter(Boolean);
+
+  return { status: "success", message: `${parts.join(" and ")} uploaded.` };
+}
+
 export async function uploadProductImageAction(
   _previousState: ImageActionState,
   formData: FormData,
@@ -338,22 +518,32 @@ export async function deleteProductImageAction(formData: FormData) {
   if (image.is_primary) {
     const { data: remaining } = await context.supabase
       .from("product_images")
-      .select("id")
+      .select("id, storage_path")
       .eq("product_id", productId)
-      .order("sort_order", { ascending: true })
-      .limit(1);
+      .order("sort_order", { ascending: true });
 
-    if (remaining?.[0]) {
+    const nextPrimary = (remaining ?? []).find(
+      (row) => productMediaType(row.storage_path) === "image",
+    );
+
+    if (nextPrimary) {
       await context.supabase
         .from("product_images")
         .update({ is_primary: true })
-        .eq("id", remaining[0].id);
+        .eq("id", nextPrimary.id);
     }
   }
+
+  const { data: product } = await context.supabase
+    .from("products")
+    .select("slug")
+    .eq("id", productId)
+    .maybeSingle();
 
   revalidatePath(`/admin/products/${productId}/edit`);
   revalidatePath("/admin/products");
   revalidatePath("/products");
+  if (product?.slug) revalidatePath(`/products/${product.slug}`);
 }
 
 export async function setPrimaryImageAction(formData: FormData) {
@@ -364,6 +554,14 @@ export async function setPrimaryImageAction(formData: FormData) {
   const productId = String(formData.get("productId") ?? "");
   if (!imageId || !productId) return;
 
+  const { data: image } = await context.supabase
+    .from("product_images")
+    .select("id, storage_path")
+    .eq("id", imageId)
+    .maybeSingle();
+
+  if (!image || productMediaType(image.storage_path) === "video") return;
+
   await context.supabase
     .from("product_images")
     .update({ is_primary: false })
@@ -371,7 +569,14 @@ export async function setPrimaryImageAction(formData: FormData) {
 
   await context.supabase.from("product_images").update({ is_primary: true }).eq("id", imageId);
 
+  const { data: product } = await context.supabase
+    .from("products")
+    .select("slug")
+    .eq("id", productId)
+    .maybeSingle();
+
   revalidatePath(`/admin/products/${productId}/edit`);
   revalidatePath("/admin/products");
   revalidatePath("/products");
+  if (product?.slug) revalidatePath(`/products/${product.slug}`);
 }

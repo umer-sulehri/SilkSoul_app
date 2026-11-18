@@ -49,6 +49,7 @@ supabase/migrations/0006_product_experience.sql
 supabase/migrations/0007_payments.sql
 supabase/migrations/0008_order_status_jumps.sql
 supabase/migrations/0009_order_reship.sql
+supabase/migrations/0010_product_media.sql
 ```
 
 4. Seed the starter catalog, store settings and administrator login:

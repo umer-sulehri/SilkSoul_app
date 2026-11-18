@@ -1,5 +1,9 @@
 import type { Product, StoreSettings } from "@/types/catalog";
 import { defaultPaymentSettings } from "@/lib/payments";
+import {
+  defaultSiteImages,
+  defaultSocialLinks,
+} from "@/lib/site-content";
 import { defaultSiteTheme } from "@/lib/site-theme";
 
 const hairOil: Product = {
@@ -54,6 +58,7 @@ const hairOil: Product = {
       id: "img-hair-oil",
       path: "/images/product-1-hair-oil.jpeg",
       alt: "SILK Soul Natural Hair Oil bottle with botanical label",
+      mediaType: "image",
       sortOrder: 0,
       isPrimary: true,
     },
@@ -117,6 +122,7 @@ const milkyShampoo: Product = {
       id: "img-milky-shampoo",
       path: "/images/product-2-milky-shampoo.jpeg",
       alt: "SILK Soul Milky Repair & Smooth Shampoo bottle with sulphate-free label",
+      mediaType: "image",
       sortOrder: 0,
       isPrimary: true,
     },
@@ -144,6 +150,11 @@ export const demoStoreSettings: StoreSettings = {
   payments: defaultPaymentSettings,
   announcement:
     "Complimentary delivery on orders over Rs 5,000 · Cash on delivery available",
+  socialLinks: {
+    ...defaultSocialLinks,
+    instagram: "@silksoul_official",
+  },
+  images: defaultSiteImages,
   theme: defaultSiteTheme,
 };
 

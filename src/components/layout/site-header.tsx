@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, Search, ShoppingBag, Truck, X } from "lucide-react";
 import { useCart } from "@/components/cart/cart-provider";
+import { siteImageSrc } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import type { StoreSettings } from "@/types/catalog";
 
@@ -62,7 +63,7 @@ export function SiteHeader({ settings }: { settings: StoreSettings }) {
             >
               <span className="relative h-10 w-10 overflow-hidden rounded-full border border-accent/40 bg-surface-soft shadow-sm">
                 <Image
-                  src="/images/logo.jpeg"
+                  src={siteImageSrc(settings.images.logo)}
                   alt=""
                   fill
                   sizes="40px"

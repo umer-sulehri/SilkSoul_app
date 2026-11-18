@@ -1,8 +1,10 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, supabaseConfig } from "@/lib/env";
+import { productMediaType } from "@/lib/images";
 import { demoProducts, demoStoreSettings } from "@/lib/demo/catalog";
 import { paymentSettingsFromSocials } from "@/lib/payments";
+import { siteImagesFromSocials, socialLinksFromSocials } from "@/lib/site-content";
 import { siteThemeFromSocials } from "@/lib/site-theme";
 import { toArray, toSpecifications } from "@/lib/utils";
 import type {
@@ -53,12 +55,16 @@ export function mapProduct(row: ProductQueryRow): Product {
   const images = [...row.product_images]
     .sort((a, b) => {
       if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+      const aVideo = productMediaType(a.storage_path) === "video";
+      const bVideo = productMediaType(b.storage_path) === "video";
+      if (aVideo !== bVideo) return aVideo ? 1 : -1;
       return a.sort_order - b.sort_order;
     })
     .map((image) => ({
       id: image.id,
       path: resolveImagePath(image.storage_path),
       alt: image.alt_text ?? row.name,
+      mediaType: productMediaType(image.storage_path),
       sortOrder: image.sort_order,
       isPrimary: image.is_primary,
     }));
@@ -112,18 +118,19 @@ export function mapProduct(row: ProductQueryRow): Product {
       soft: row.theme_soft ?? "#e9efe1",
     },
     category: row.category,
-    images:
-      images.length > 0
-        ? images
-        : [
-            {
-              id: `${row.id}-placeholder`,
-              path: "/images/product-1-hair-oil.jpeg",
-              alt: row.name,
-              sortOrder: 0,
-              isPrimary: true,
-            },
-          ],
+    images: images.some((image) => image.mediaType === "image")
+      ? images
+      : [
+          {
+            id: `${row.id}-placeholder`,
+            path: "/images/product-1-hair-oil.jpeg",
+            alt: row.name,
+            mediaType: "image",
+            sortOrder: 0,
+            isPrimary: true,
+          },
+          ...images,
+        ],
     rating: { average, count: reviewCount },
     reviews,
     seoTitle: row.seo_title,
@@ -400,6 +407,8 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     codEnabled: data.cod_enabled,
     payments: paymentSettingsFromSocials(data.socials),
     announcement: data.announcement,
+    socialLinks: socialLinksFromSocials(data.socials),
+    images: siteImagesFromSocials(data.socials),
     theme: siteThemeFromSocials(data.socials),
   };
 });

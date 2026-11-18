@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AtSign, Clock, Mail, MessageCircle, Phone } from "lucide-react";
+import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
+import { socialIcons } from "@/components/icons/social-icons";
 import { Container } from "@/components/ui/layout";
 import { buttonVariants } from "@/components/ui/button";
 import { getStoreSettings } from "@/lib/data/products";
+import {
+  socialLabels,
+  socialPlatforms,
+  socialProfileUrl,
+} from "@/lib/site-content";
 
 export const metadata: Metadata = {
   title: "Contact us",
@@ -12,6 +18,14 @@ export const metadata: Metadata = {
 
 export default async function ContactPage() {
   const settings = await getStoreSettings();
+  const socials = socialPlatforms
+    .map((platform) => ({
+      platform,
+      href: socialProfileUrl(platform, settings.socialLinks[platform]),
+    }))
+    .filter((social): social is { platform: (typeof socialPlatforms)[number]; href: string } =>
+      Boolean(social.href),
+    );
 
   return (
     <div className="pb-24 pt-12 sm:pt-16">
@@ -106,9 +120,29 @@ export default async function ContactPage() {
                 </li>
               ))}
             </ul>
-            <div className="mt-6 flex items-center gap-2 border-t border-border pt-5 text-xs text-muted">
-              <AtSign className="h-4 w-4" aria-hidden="true" />
-              Follow @silksoul_official for product updates.
+            <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-5 text-xs text-muted">
+              {socials.length > 0 ? (
+                <>
+                  <span>Follow us for product updates:</span>
+                  {socials.map(({ platform, href }) => {
+                    const Icon = socialIcons[platform];
+                    return (
+                      <a
+                        key={platform}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 font-medium text-ink transition-colors hover:border-primary/30 hover:text-primary"
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {socialLabels[platform]}
+                      </a>
+                    );
+                  })}
+                </>
+              ) : (
+                <span>Follow us on social media for product updates.</span>
+              )}
             </div>
           </div>
         </div>

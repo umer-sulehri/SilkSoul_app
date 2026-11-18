@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import type { Json } from "@/types/database";
-import { getAdminContext } from "@/lib/auth/admin";
+import { getAdminContext, type AdminContext } from "@/lib/auth/admin";
+import {
+  defaultSiteImages,
+  siteImageKeys,
+  type SiteImages,
+} from "@/lib/site-content";
 import { defaultSiteTheme } from "@/lib/site-theme";
 import { couponFormSchema, storeSettingsSchema } from "@/lib/validations/schemas";
 
@@ -13,6 +18,45 @@ export type SettingsActionState = {
 };
 
 export type CouponActionState = SettingsActionState;
+
+type ServerSupabase = NonNullable<AdminContext["supabase"]>;
+
+const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+
+function validateSiteImage(file: File) {
+  if (!allowedImageTypes.includes(file.type)) {
+    return "Use a JPG, PNG, WebP or AVIF image.";
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return "Images must be smaller than 5 MB.";
+  }
+  return null;
+}
+
+async function storeSiteImage(
+  supabase: ServerSupabase,
+  key: string,
+  file: File,
+): Promise<{ path?: string; error?: string }> {
+  const validationError = validateSiteImage(file);
+  if (validationError) return { error: validationError };
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-80);
+  const path = `site/${key}-${crypto.randomUUID()}-${safeName}`;
+  const buffer = await file.arrayBuffer();
+
+  const { error } = await supabase.storage
+    .from("product-images")
+    .upload(path, buffer, { contentType: file.type, upsert: false });
+
+  if (error) return { error: error.message };
+  return { path };
+}
+
+function readCurrentImage(formData: FormData, key: string) {
+  const value = formData.get(`${key}Current`);
+  return typeof value === "string" && value.trim() ? value.trim() : defaultSiteImages[key as keyof SiteImages];
+}
 
 export async function saveStoreSettingsAction(
   _previousState: SettingsActionState,
@@ -38,6 +82,8 @@ export async function saveStoreSettingsAction(
     announcement: formData.get("announcement") || undefined,
     address: formData.get("address") || undefined,
     instagram: formData.get("instagram") || undefined,
+    facebook: formData.get("facebook") || undefined,
+    tiktok: formData.get("tiktok") || undefined,
     themeBackground: formData.get("themeBackground") || defaultSiteTheme.background,
     themeSurface: formData.get("themeSurface") || defaultSiteTheme.surface,
     themeSurfaceSoft: formData.get("themeSurfaceSoft") || defaultSiteTheme.surfaceSoft,
@@ -60,6 +106,24 @@ export async function saveStoreSettingsAction(
     return { status: "error", message: "Please review the highlighted fields.", fieldErrors };
   }
 
+  const images = { ...defaultSiteImages };
+  for (const key of siteImageKeys) {
+    images[key] = readCurrentImage(formData, key);
+
+    const file = formData.get(`${key}File`);
+    if (file instanceof File && file.size > 0) {
+      const uploaded = await storeSiteImage(context.supabase, key, file);
+      if (uploaded.error || !uploaded.path) {
+        return {
+          status: "error",
+          message: uploaded.error ?? "Could not upload the image. Please try again.",
+          fieldErrors: { [`${key}File`]: uploaded.error ?? "Upload failed." },
+        };
+      }
+      images[key] = uploaded.path;
+    }
+  }
+
   const { error } = await context.supabase
     .from("store_settings")
     .update({
@@ -74,6 +138,12 @@ export async function saveStoreSettingsAction(
       address: parsed.data.address || null,
       socials: {
         instagram: parsed.data.instagram || null,
+        links: {
+          instagram: parsed.data.instagram || null,
+          facebook: parsed.data.facebook || null,
+          tiktok: parsed.data.tiktok || null,
+        },
+        images,
         theme: {
           background: parsed.data.themeBackground,
           surface: parsed.data.themeSurface,

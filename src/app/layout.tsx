@@ -4,6 +4,7 @@ import { CartProvider } from "@/components/cart/cart-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { siteConfig } from "@/lib/env";
 import { getStoreSettings } from "@/lib/data/products";
+import { siteImageSrc } from "@/lib/site-content";
 import { siteThemeStyle } from "@/lib/site-theme";
 import "./globals.css";
 
@@ -20,40 +21,47 @@ const displayFont = DM_Serif_Display({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  title: {
-    default: "SilkSoul — Botanical Haircare",
-    template: "%s | SilkSoul",
-  },
-  description: siteConfig.description,
-  applicationName: "SilkSoul",
-  keywords: [
-    "SilkSoul",
-    "natural hair oil",
-    "sulphate free shampoo",
-    "milky shampoo",
-    "haircare",
-    "skincare",
-    "Pakistan",
-  ],
-  icons: {
-    icon: "/images/logo.jpeg",
-    apple: "/images/logo.jpeg",
-  },
-  openGraph: {
-    type: "website",
-    siteName: "SilkSoul",
-    title: "SilkSoul — Let nature love your hair",
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getStoreSettings();
+  const logo = siteImageSrc(settings.images.logo);
+  const socialPreview = siteImageSrc(settings.images.socialPreview);
+
+  return {
+    metadataBase: new URL(siteConfig.url),
+    title: {
+      default: "SilkSoul — Botanical Haircare",
+      template: "%s | SilkSoul",
+    },
     description: siteConfig.description,
-    images: [{ url: "/images/product-1-hair-oil.jpeg", alt: "SILK Soul Natural Hair Oil" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "SilkSoul — Let nature love your hair",
-    description: siteConfig.description,
-  },
-};
+    applicationName: "SilkSoul",
+    keywords: [
+      "SilkSoul",
+      "natural hair oil",
+      "sulphate free shampoo",
+      "milky shampoo",
+      "haircare",
+      "skincare",
+      "Pakistan",
+    ],
+    icons: {
+      icon: logo,
+      apple: logo,
+    },
+    openGraph: {
+      type: "website",
+      siteName: "SilkSoul",
+      title: "SilkSoul — Let nature love your hair",
+      description: siteConfig.description,
+      images: [{ url: socialPreview, alt: "SILK Soul Natural Hair Oil" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "SilkSoul — Let nature love your hair",
+      description: siteConfig.description,
+      images: [socialPreview],
+    },
+  };
+}
 
 export async function generateViewport(): Promise<Viewport> {
   const settings = await getStoreSettings();

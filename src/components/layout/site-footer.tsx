@@ -1,7 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, AtSign, Mail, MapPin, Phone } from "lucide-react";
+import { ArrowUpRight, Mail, MapPin, Phone } from "lucide-react";
+import { socialIcons } from "@/components/icons/social-icons";
 import { Container } from "@/components/ui/layout";
+import {
+  siteImageSrc,
+  socialLabels,
+  socialPlatforms,
+  socialProfileUrl,
+} from "@/lib/site-content";
 import type { StoreSettings } from "@/types/catalog";
 
 const shopLinks = [
@@ -24,6 +31,15 @@ const policyLinks = [
 ];
 
 export function SiteFooter({ settings }: { settings: StoreSettings }) {
+  const socials = socialPlatforms
+    .map((platform) => ({
+      platform,
+      href: socialProfileUrl(platform, settings.socialLinks[platform]),
+    }))
+    .filter((social): social is { platform: (typeof socialPlatforms)[number]; href: string } =>
+      Boolean(social.href),
+    );
+
   return (
     <footer className="botanical-panel mt-24 border-t border-primary-hover/50 bg-primary text-white/70">
       <Container className="py-14 sm:py-16">
@@ -31,7 +47,13 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
           <div>
             <div className="flex items-center gap-2.5">
               <span className="relative h-9 w-9 overflow-hidden rounded-full border border-white/15 bg-white/10">
-                <Image src="/images/logo.jpeg" alt="" fill sizes="36px" className="object-cover" />
+                <Image
+                  src={siteImageSrc(settings.images.logo)}
+                  alt=""
+                  fill
+                  sizes="36px"
+                  className="object-cover"
+                />
               </span>
               <span className="font-serif text-2xl text-white">SilkSoul</span>
             </div>
@@ -40,15 +62,21 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
               hair that feels soft, strong and cared for.
             </p>
             <div className="mt-5 flex items-center gap-3">
-              <a
-                href="https://www.instagram.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-                aria-label="SilkSoul on Instagram"
-              >
-                <AtSign className="h-4 w-4" aria-hidden="true" />
-              </a>
+              {socials.map(({ platform, href }) => {
+                const Icon = socialIcons[platform];
+                return (
+                  <a
+                    key={platform}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                    aria-label={`SilkSoul on ${socialLabels[platform]}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                );
+              })}
               <a
                 href={`mailto:${settings.supportEmail}`}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"

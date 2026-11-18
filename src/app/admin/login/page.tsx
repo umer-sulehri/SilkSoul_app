@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Database } from "lucide-react";
 import { LoginForm } from "@/components/admin/login-form";
 import { getAdminContext } from "@/lib/auth/admin";
+import { getStoreSettings } from "@/lib/data/products";
+import { siteImageSrc } from "@/lib/site-content";
 
 export const metadata: Metadata = {
   title: "Admin sign in",
@@ -16,8 +18,11 @@ export default async function AdminLoginPage({
 }: {
   searchParams: Promise<{ setup?: string }>;
 }) {
-  const context = await getAdminContext();
-  const params = await searchParams;
+  const [context, settings, params] = await Promise.all([
+    getAdminContext(),
+    getStoreSettings(),
+    searchParams,
+  ]);
 
   if (context.user && context.isStaff) redirect("/admin");
 
@@ -30,7 +35,13 @@ export default async function AdminLoginPage({
           aria-label="SilkSoul home"
         >
           <span className="relative h-9 w-9 overflow-hidden rounded-full bg-surface-soft">
-            <Image src="/images/logo.jpeg" alt="" fill sizes="36px" className="object-cover" />
+            <Image
+              src={siteImageSrc(settings.images.logo)}
+              alt=""
+              fill
+              sizes="36px"
+              className="object-cover"
+            />
           </span>
           <span className="font-serif text-2xl leading-none tracking-tight">SilkSoul</span>
         </Link>

@@ -1,4 +1,6 @@
 import type { OrderStatus, PaymentMethod, PaymentStatus, ReviewStatus } from "@/types/database";
+import type { ProductMediaType } from "@/lib/images";
+import type { SiteImages, SocialLinks } from "@/lib/site-content";
 
 export type Money = number;
 
@@ -12,6 +14,7 @@ export type ProductImage = {
   id: string;
   path: string;
   alt: string;
+  mediaType: ProductMediaType;
   sortOrder: number;
   isPrimary: boolean;
 };
@@ -196,5 +199,7 @@ export type StoreSettings = {
   codEnabled: boolean;
   payments: PaymentSettings;
   announcement: string | null;
+  socialLinks: SocialLinks;
+  images: SiteImages;
   theme: SiteTheme;
 };

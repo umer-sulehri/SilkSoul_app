@@ -12,6 +12,7 @@ export function ImageUploadField({
   hint = "JPG, PNG, WebP or AVIF. Maximum 5 MB.",
   required = false,
   className,
+  currentSrc,
   onFileChange,
 }: {
   id?: string;
@@ -20,11 +21,14 @@ export function ImageUploadField({
   hint?: string;
   required?: boolean;
   className?: string;
+  currentSrc?: string | null;
   onFileChange?: (file: File | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const imageSrc = preview ?? currentSrc ?? null;
+  const hasImage = Boolean(imageSrc);
 
   useEffect(() => {
     return () => {
@@ -87,13 +91,13 @@ export function ImageUploadField({
           onClick={chooseFile}
           className={cn(
             "group relative flex min-h-28 flex-1 items-center justify-center overflow-hidden rounded-[14px] border border-dashed border-border bg-surface-soft/45 p-3 text-center transition-colors hover:border-primary/45 hover:bg-surface-soft/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-            preview ? "border-solid" : "",
+            hasImage ? "border-solid" : "",
           )}
         >
-          {preview ? (
+          {imageSrc ? (
             <>
               <Image
-                src={preview}
+                src={imageSrc}
                 alt="Selected image preview"
                 fill
                 unoptimized
@@ -101,7 +105,7 @@ export function ImageUploadField({
                 className="object-contain p-2"
               />
               <span className="absolute bottom-2 left-2 right-2 truncate rounded-full bg-ink/70 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur">
-                {fileName}
+                {fileName ?? "Current image"}
               </span>
             </>
           ) : (
@@ -121,7 +125,7 @@ export function ImageUploadField({
           className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-border bg-surface px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         >
           <ImagePlus className="h-4 w-4" aria-hidden="true" />
-          {preview ? "Change image" : "Browse images"}
+          {hasImage ? "Change image" : "Browse images"}
         </button>
       </div>
     </div>
